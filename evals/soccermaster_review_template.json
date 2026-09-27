@@ -4,12 +4,807 @@
   "annotation_status": "human_review_required",
   "reviewer": null,
   "reviewed_at": null,
-  "claim_annotations": [],
-  "retrieval_annotations": [],
-  "audit_annotations": [],
+  "run_context": {
+    "claim_count": 9,
+    "repository_artifact_count": 740,
+    "repository_document_count": 621,
+    "note": "One development run. Candidate model output is not gold annotation."
+  },
+  "claims": [
+    {
+      "claim_index": 1,
+      "candidate_output": {
+        "claim": {
+          "statement": "On the SoccerNet-GSR test set, the SoccerFactory pipeline achieves a GS-HOTA of 64.1, GS-DetA of 51.5, and GS-AssA of 79.9, outperforming previous methods.",
+          "evidence": [
+            {
+              "page": 4,
+              "excerpt": "As shown in Tab. 1, results from our pipeline outperform the leading methods, with a superior GS-HOTA score of 64.1, demonstrating its capability to generate high-quality annotations at scale, offering a practical alternative to expensive manual labeling."
+            },
+            {
+              "page": 5,
+              "excerpt": "Ours 64.1 51.5 79.9"
+            }
+          ],
+          "dataset": "SoccerNet-GSR test set",
+          "metric": "GS-HOTA",
+          "reported_value": "64.1"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 4,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 5,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/sam2/README.md",
+          "codes/sn-gamestate/README.md",
+          "codes/tracklab/tracklab/configs/dataset/soccernet_gs.yaml",
+          "codes/tracklab/trackeval/datasets/soccernet_gs.py",
+          "codes/tracklab/tracklab/wrappers/datasets/soccernet/soccernet_game_state.py"
+        ],
+        "mapping_status": "PARTIALLY_SUPPORTED",
+        "mapping_explanation": "The retrieved documents describe and support the SoccerNet-GSR dataset download and preparation as well as the GS-HOTA evaluation metric protocol. However, the specific SoccerFactory pipeline code, model configuration, checkpoints, and execution commands required to reproduce the claim's reported scores (64.1 GS-HOTA, 51.5 GS-DetA, 79.9 GS-AssA) are not provided in the retrieved files.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "PRESENT",
+            "notes": "Code snippet and instructions for downloading and extracting the SoccerNet-GSR dataset splits (including the test set) are documented."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No model configuration for the SoccerFactory pipeline is found in the retrieved documents."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "AMBIGUOUS",
+            "notes": "Checkpoints for baseline tracker states and SAM 2 are provided, but no trained checkpoint for SoccerFactory itself is supplied."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "AMBIGUOUS",
+            "notes": "Inference commands are shown for running the baseline pipeline, but no command for running the SoccerFactory pipeline on the test set is present."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "PRESENT",
+            "notes": "Clear environment dependency setup instructions using Conda and Poetry are provided in the README."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed specification is found in the retrieved documents."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "PRESENT",
+            "notes": "The GS-HOTA metric definition, parameters, evaluation configuration, and evaluation codebase (`trackeval/datasets/soccernet_gs.py`) are fully detailed."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 2,
+      "candidate_output": {
+        "claim": {
+          "statement": "SoccerMaster achieves an AP@50 of 91.5 and an mAP of 49.5 on athlete detection, outperforming frozen-encoder baselines.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "Ours ! 91.5 49.5 79.7 99.1 95.3 85.9 84.1 95.7 91.4 92.4 77.2 39.0"
+            },
+            {
+              "page": 8,
+              "excerpt": "notably improving athlete detection and identification by +17.5% mAP"
+            }
+          ],
+          "dataset": null,
+          "metric": "mAP",
+          "reported_value": "49.5"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/SoccerMaster/sn_calibration/README.md",
+          "codes/sn-gamestate/README.md",
+          "codes/tracklab/README.md",
+          "codes/tracklab/plugins/eval/PoseTrack21/README.md",
+          "codes/sam2/sam2/configs/sam2.1/sam2.1_hiera_b+.yaml"
+        ],
+        "mapping_status": "UNSUPPORTED",
+        "mapping_explanation": "None of the retrieved documents contain information about the SoccerMaster model, athlete detection experiments, or the reported metrics (AP@50 of 91.5 and mAP of 49.5). The retrieved files include documentation for SoccerNet camera calibration, SoccerNet game state reconstruction, TrackLab, PoseTrack21 evaluation, and a SAM 2 configuration file, none of which provide evidence or instructions to reproduce the claim.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "NOT_FOUND",
+            "notes": "No dataset preparation instructions for the athlete detection task are present in the provided documents."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No model configurations for SoccerMaster or its athlete detection architecture are found."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No checkpoints or pretrained weights for the SoccerMaster athlete detection model are provided."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No training or inference commands for reproducing the athlete detection benchmark are provided."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "No environment requirements or dependency definitions for SoccerMaster athlete detection are found in the retrieved documents."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed information is provided."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "No evaluation protocol or scripts evaluating AP@50 or mAP for athlete detection in SoccerMaster are present."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 3,
+      "candidate_output": {
+        "claim": {
+          "statement": "SoccerMaster achieves 77.2% accuracy on soccer event classification.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "Ours ! 91.5 49.5 79.7 99.1 95.3 85.9 84.1 95.7 91.4 92.4 77.2 39.0"
+            },
+            {
+              "page": 8,
+              "excerpt": "event classification by +11.9% accuracy;"
+            }
+          ],
+          "dataset": null,
+          "metric": "accuracy",
+          "reported_value": "77.2"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "README.md",
+          "codes/SoccerMaster/sn_calibration/README.md",
+          "codes/SoccerMaster/models/caption_classification.py",
+          "codes/SoccerMaster/models/deformable_detr/deformable_detr.py",
+          "codes/SoccerMaster/models/keypoints_detection.py"
+        ],
+        "mapping_status": "PARTIALLY_SUPPORTED",
+        "mapping_explanation": "The repository provides general environment setup, instructions for downloading the SoccerMaster pretrained checkpoints, and code defining classification heads and evaluation metrics (e.g., CaptionClassificationHead and accuracy calculation). However, specific dataset preparation instructions, configuration files, and execution commands for reproducing the 77.2% soccer event classification experiment are not present.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "NOT_FOUND",
+            "notes": "The retrieved documents describe the Soccer Factory and SoccerNetGS datasets for game state recognition, but provide no data preparation pipeline or instructions for soccer event classification."
+          },
+          {
+            "check": "model_config",
+            "model_status": "AMBIGUOUS",
+            "notes": "Model construction logic and default head hyperparameter definitions exist in Python code, but the full configuration file specifying the exact architecture and hyperparameter settings for event classification is missing."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "PRESENT",
+            "notes": "The README includes instructions to download the official SoccerMaster model checkpoints from Hugging Face."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No command is provided to execute training or inference for soccer event classification."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "PRESENT",
+            "notes": "The README contains explicit conda and pip commands with exact pinned package versions to set up the running environment."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed specification was found in the retrieved documents."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "AMBIGUOUS",
+            "notes": "An accuracy computation implementation exists for caption classification, but it is ambiguous whether this directly corresponds to the benchmark protocol used for the reported 77.2% soccer event classification result."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 4,
+      "candidate_output": {
+        "claim": {
+          "statement": "SoccerMaster achieves a top-1 retrieval accuracy of 39.0% on vision-language alignment within batches of 48.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "our model exhibits remarkable performance in the vision-language alignment (retrieval) task, achieving a 39.0% top-1 accuracy that largely surpasses all baselines."
+            },
+            {
+              "page": 8,
+              "excerpt": "Ours ! 91.5 49.5 79.7 99.1 95.3 85.9 84.1 95.7 91.4 92.4 77.2 39.0"
+            }
+          ],
+          "dataset": null,
+          "metric": "top-1 accuracy",
+          "reported_value": "39.0%"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [],
+        "mapping_status": "UNSUPPORTED",
+        "mapping_explanation": "No repository documents matched the claim keywords.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 5,
+      "candidate_output": {
+        "claim": {
+          "statement": "On the SN22-test-center camera calibration benchmark at 512x512 resolution, fine-tuned SoccerMaster obtains a Final Score (FS) of 75.8, compared to 67.6 for PnlCalib.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "PnlCalib 70.2 86.8 91.7 96.4 67.6 512×512"
+            },
+            {
+              "page": 8,
+              "excerpt": "Ours† 76.9 92.3 94.4 98.6 75.8 512×512"
+            },
+            {
+              "page": 9,
+              "excerpt": "surpassing PnlCalib by +8.2 FS on SN22 (75.8 vs. 67.6)"
+            }
+          ],
+          "dataset": "SN22-test-center",
+          "metric": "FS",
+          "reported_value": "75.8"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/sam2/README.md",
+          "codes/tracklab/README.md",
+          "codes/SoccerMaster/data/pnlcalib_utils/utils_geometry.py",
+          "codes/SoccerMaster/data/utils.py",
+          "codes/SoccerMaster/models/deformable_detr/ops/modules/ms_deform_attn.py"
+        ],
+        "mapping_status": "PARTIALLY_SUPPORTED",
+        "mapping_explanation": "The retrieved files contain camera calibration utilities, pitch 3D line definitions, camera projection helpers, and geometric intersection tools for PnlCalib. However, the specific SN22-test-center dataset loader, fine-tuned SoccerMaster model configs, checkpoints, execution commands, and evaluation scripts for the Final Score (FS) metric are missing.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "AMBIGUOUS",
+            "notes": "General camera calibration data transforms, pitch geometry, and PnlCalib geometric intersection utilities are present, but the specific preparation and loading pipeline for the SN22-test-center benchmark at 512x512 resolution is not provided."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No configuration file or model specification for fine-tuned SoccerMaster camera calibration was retrieved."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No model checkpoints or weights for fine-tuned SoccerMaster or the PnlCalib camera calibration baseline are present in the retrieved documents."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No execution commands for fine-tuning or running inference on the SN22 camera calibration benchmark are provided."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "While environment instructions exist for SAM 2 and TrackLab, no environment specification or dependency file was retrieved for SoccerMaster's camera calibration setup."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed settings are documented in the retrieved files."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "Although an extremity-label mirroring function from sn_calibration is imported, the evaluation protocol and implementation for calculating the Final Score (FS) on SN22 are not retrieved."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 6,
+      "candidate_output": {
+        "claim": {
+          "statement": "On the SN23-test camera calibration benchmark at 512x512 resolution, fine-tuned SoccerMaster achieves a Final Score (FS) of 56.2 compared to 51.8 for PnlCalib.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "PnlCalib 66.9 82.4 86.7 78.4 51.8 512×512"
+            },
+            {
+              "page": 8,
+              "excerpt": "Ours† 71.1 85.4 87.8 79.1 56.2 512×512"
+            },
+            {
+              "page": 9,
+              "excerpt": "+4.4 FS on SN23 (56.2 vs. 51.8)."
+            }
+          ],
+          "dataset": "SN23-test",
+          "metric": "FS",
+          "reported_value": "56.2"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/sam2/README.md",
+          "codes/tracklab/README.md",
+          "codes/SoccerMaster/data/pnlcalib_utils/utils_geometry.py",
+          "codes/SoccerMaster/data/utils.py",
+          "codes/SoccerMaster/models/deformable_detr/ops/modules/ms_deform_attn.py"
+        ],
+        "mapping_status": "PARTIALLY_SUPPORTED",
+        "mapping_explanation": "The retrieved documents include camera calibration projection utilities, soccer pitch 3D line geometry, and PnlCalib geometric intersection functions from SoccerMaster. However, the documents lack the fine-tuned SoccerMaster model configuration, checkpoints, training/inference commands, SN23-test dataset split/preparation, and the evaluation protocol for the Final Score (FS) metric.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "AMBIGUOUS",
+            "notes": "Pitch line geometry definitions and 2D/3D camera projection utilities are present in data/utils.py, but specific preparation scripts or instructions for the SN23-test dataset are missing."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No model configuration for SoccerMaster camera calibration is provided in the retrieved files."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No checkpoints or weights for the fine-tuned SoccerMaster calibration model are available."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No training or inference commands for fine-tuning SoccerMaster or evaluating on SN23-test at 512x512 resolution were found."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "Environment dependencies are documented for unrelated submodules (SAM 2 and TrackLab), but none are provided for SoccerMaster."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed specification is found for the calibration experiment."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "No code or documentation defining the Final Score (FS) evaluation protocol on SN23-test is present."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 7,
+      "candidate_output": {
+        "claim": {
+          "statement": "On the SoccerNet-tracking benchmark, SoccerMaster adapted with MOTIP obtains a HOTA score of 59.1, DetA of 65.2, AssA of 53.9, MOTA of 81.6, and IDF1 of 74.6.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "Ours+MOTIP [19] 59.1 65.2 53.9 81.6 74.6"
+            },
+            {
+              "page": 9,
+              "excerpt": "Overall, our model demonstrates competitive results across all key metrics: HOTA (59.1), MOTA (81.6), and IDF1 (74.6)."
+            }
+          ],
+          "dataset": "SoccerNet-tracking benchmark",
+          "metric": "HOTA",
+          "reported_value": "59.1"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/sn-gamestate/README.md",
+          "codes/tracklab/README.md",
+          "codes/tracklab/plugins/eval/PoseTrack21/README.md",
+          "codes/sn-gamestate/sn_gamestate/configs/eval/gs_hota.yaml",
+          "codes/sn-gamestate/sn_gamestate/configs/gsr_step_1_example.yaml"
+        ],
+        "mapping_status": "UNSUPPORTED",
+        "mapping_explanation": "The provided documents describe SoccerNet Game State Reconstruction (sn-gamestate) and the TrackLab framework. There is no mention or implementation of SoccerMaster or MOTIP, nor any results matching the reported benchmark metrics (HOTA 59.1, DetA 65.2, AssA 53.9, MOTA 81.6, IDF1 74.6).",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "AMBIGUOUS",
+            "notes": "General instructions to obtain the SoccerNet Tracking dataset are provided, but specific preparation steps or preprocessing for SoccerMaster adapted with MOTIP are absent."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No configuration files or architecture specifications for SoccerMaster or MOTIP are present."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No checkpoints or pretrained weights for SoccerMaster or MOTIP are found."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No training or inference commands for reproducing the SoccerMaster + MOTIP experiment are available."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "AMBIGUOUS",
+            "notes": "General environment installation commands for TrackLab are given, but it is unclear whether they support SoccerMaster and MOTIP."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed specifications are mentioned for this experiment."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "AMBIGUOUS",
+            "notes": "Evaluation configs reference standard tracking metric families (CLEAR for MOTA, HOTA for HOTA/DetA/AssA, Identity for IDF1) via TrackEval, but not specific to reproducing the reported SoccerMaster evaluation on SoccerNet-tracking."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 8,
+      "candidate_output": {
+        "claim": {
+          "statement": "On the SN-Caption-test-align commentary generation benchmark, SoccerMaster achieves a CIDEr score of 38.6.",
+          "evidence": [
+            {
+              "page": 8,
+              "excerpt": "Ours 31.3 8.9 26.2 26.6 38.6"
+            },
+            {
+              "page": 9,
+              "excerpt": "Our model achieves the best results on BLEU@1 (31.3), BLEU@4 (8.9), and CIDEr (38.6), with notable improvements over MatchVision (+0.4 on BLEU@1 and +2.9 on CIDEr)."
+            }
+          ],
+          "dataset": "SN-Caption-test-align benchmark",
+          "metric": "CIDEr",
+          "reported_value": "38.6"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 8,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [],
+        "mapping_status": "UNSUPPORTED",
+        "mapping_explanation": "No repository documents matched the claim keywords.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "No matching repository documents were retrieved."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    },
+    {
+      "claim_index": 9,
+      "candidate_output": {
+        "claim": {
+          "statement": "Adding SoccerFactory-generated spatial data to compact SoccerMaster training improves athlete detection mAP from 30.2 to 37.5.",
+          "evidence": [
+            {
+              "page": 9,
+              "excerpt": "We observe that the inclusion of pipeline-generated data yields substantial improvements in spatial perception tasks, particularly in athlete detection, achieving +4.3 AP@50 (82.0 vs. 77.7) and +7.3 mAP (37.5 vs. 30.2)."
+            },
+            {
+              "page": 9,
+              "excerpt": "77.7 30.2 75.0 97.3 92.9 89.6 70.5 93.4 93.9 86.0 71.6 35.0"
+            },
+            {
+              "page": 9,
+              "excerpt": "! 82.0 37.5 76.5 98.1 93.1 90.1 70.7 93.7 96.1 85.2 70.5 36.8"
+            }
+          ],
+          "dataset": null,
+          "metric": "mAP",
+          "reported_value": "37.5"
+        },
+        "paper_evidence_validation": [
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          },
+          {
+            "page": 9,
+            "is_valid": true,
+            "reason": null
+          }
+        ],
+        "current_retrieved_documents": [
+          "codes/SoccerMaster/sn_calibration/README.md",
+          "codes/sn-gamestate/README.md",
+          "codes/tracklab/README.md",
+          "codes/tracklab/plugins/eval/PoseTrack21/README.md",
+          "codes/sam2/sam2/configs/sam2.1/sam2.1_hiera_b+.yaml"
+        ],
+        "mapping_status": "UNSUPPORTED",
+        "mapping_explanation": "The retrieved documents contain README files and configs for SoccerNet camera calibration, SoccerNet game state reconstruction, TrackLab, PoseTrack21 evaluation, and SAM 2.1. None of these documents contain information about SoccerFactory-generated spatial data, SoccerMaster training, or the athlete detection experiment evaluating the improvement in mAP from 30.2 to 37.5.",
+        "audit": [
+          {
+            "check": "dataset_data_preparation",
+            "model_status": "NOT_FOUND",
+            "notes": "No information regarding SoccerFactory-generated spatial dataset preparation or compact SoccerMaster training splits is present in the retrieved documents."
+          },
+          {
+            "check": "model_config",
+            "model_status": "NOT_FOUND",
+            "notes": "No model configuration for the compact SoccerMaster model or athlete detection architecture used in the claim is present."
+          },
+          {
+            "check": "checkpoint",
+            "model_status": "NOT_FOUND",
+            "notes": "No checkpoints for SoccerMaster or the evaluated models are provided."
+          },
+          {
+            "check": "training_or_inference_command",
+            "model_status": "NOT_FOUND",
+            "notes": "No commands are provided for training or evaluating compact SoccerMaster on athlete detection with SoccerFactory data."
+          },
+          {
+            "check": "environment_dependencies",
+            "model_status": "NOT_FOUND",
+            "notes": "While generic environment setups exist for sn_calibration, TrackLab, and SAM 2, none specify the environment required for the SoccerMaster/SoccerFactory detection experiments."
+          },
+          {
+            "check": "random_seed",
+            "model_status": "NOT_FOUND",
+            "notes": "No random seed specifications are found in the retrieved documents."
+          },
+          {
+            "check": "evaluation_protocol_metric",
+            "model_status": "NOT_FOUND",
+            "notes": "The evaluation protocol and metric calculation for athlete detection mAP / AP@50 in SoccerMaster are not provided in the documents."
+          }
+        ]
+      },
+      "human_review": {
+        "claim_correctness": null,
+        "paper_evidence_support": null,
+        "relevant_repository_documents": [],
+        "mapping_status": null,
+        "audit_judgment_notes": ""
+      }
+    }
+  ],
   "notes": [
-    "Add only claims and labels verified by a human reviewer.",
-    "Do not copy model output into gold fields without checking the paper and repository.",
-    "Record the expected PDF page and repository paths for traceability."
+    "All candidate_output fields are copied from the saved development report and require human review.",
+    "Do not treat model mapping or audit statuses as gold labels.",
+    "NOT_FOUND describes only retrieved and inspected artifacts, not repository-wide absence.",
+    "Set human_review fields only after checking the paper and repository."
   ]
 }

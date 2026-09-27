@@ -1,6 +1,6 @@
 # Evaluation scaffold
 
-Paper2Repro does not ship unreviewed LLM output as gold annotations. Use `soccermaster_review_template.json` as a human annotation template, then add reviewed examples from additional papers.
+Paper2Repro does not ship unreviewed LLM output as gold annotations. `soccermaster_review_template.json` now contains the nine saved SoccerMaster claims and the run's candidate evidence/retrieval output. Its `candidate_output` section is model output, not gold. Fill only the separate `human_review` fields after checking the paper and repository.
 
 Suggested metrics:
 

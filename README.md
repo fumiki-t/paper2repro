@@ -65,7 +65,7 @@ Validation normalizes Unicode, removes invisible format characters, repairs line
 
 ## Why keyword retrieval first?
 
-The v0.1 retriever is an intentionally simple lexical baseline. It makes retrieval behavior easy to inspect and provides a reference point for later BM25 or embedding evaluations. A recent local check of the public SoccerMaster repository inventoried 740 files and loaded 625 bounded text documents. For a synthetic `49.5 mAP` claim, the top results included the calibration and game-state READMEs and example configs. These counts can change with the upstream repository.
+The v0.1 retriever is an intentionally simple lexical baseline. It matches only the claim's dataset, metric, and reported value against each `path + content`; it does not use the claim statement. In one SoccerMaster development run, the tool extracted 9 claims, anchored 21/21 paper evidence excerpts to their cited page, mapped 4/9 claims to at least partial repository information, and inspected 740 artifacts / 621 text documents. These are outputs from one run, not accuracy or general quality scores. The baseline returned no documents for Claims 4 and 8 and repeated unrelated candidates for Claims 2 and 9. Therefore `NOT_FOUND` applies only to retrieved and inspected files, and does not mean repository-wide absence. See [retrieval analysis](docs/SOCCERMASTER_RETRIEVAL_ANALYSIS.md).
 
 ## Setup
 
@@ -95,6 +95,19 @@ The CLI prints claim, evidence, mapping, and checklist counts and writes:
 
 - `outputs/soccermaster/report.json`
 - `outputs/soccermaster/report.md`
+
+The CLI also prints stage timing and LLM request measurements. Prompt/response character counts are text lengths, not token or billing counts. Successful structured responses are cached in the gitignored `.paper2repro_cache/` directory so a later run can resume after a provider error. Cache JSON may include paper claims and repository excerpts, so keep it local. Use `--cache-dir PATH` to choose another location or `--no-cache` to disable it. `--max-llm-calls N` optionally blocks the next provider request after N calls; without the flag, there is no call cap. The Gemini SDK is configured for one attempt per request, with no automatic retries.
+
+To inspect retrieval from an existing JSON report without calling an LLM:
+
+```bash
+uv run python scripts/debug_retrieval.py \
+  --report outputs/soccermaster/report.json \
+  --repo /path/to/SoccerMaster \
+  --top-k 5
+```
+
+New Markdown reports start with a claim summary table and include counts for paper evidence, mapping statuses, and the seven-item audit. For a claim with no retrieved documents, its `NOT_FOUND` items explicitly refer to an empty inspected set.
 
 PDFs and `outputs/` are ignored by Git. To inspect paper claims without a repository, use:
 
@@ -144,7 +157,7 @@ The API is a local prototype. It does not implement uploads, background jobs, au
 - `api.py`: minimal FastAPI wrapper around the pipeline
 - `scripts/`: end-to-end and focused manual entry points
 - `tests/`: unit and mocked integration coverage without real Gemini calls
-- `docs/LEARNING_NOTES_JA.md`: Japanese implementation guide
+- `docs/`: Japanese learning/application notes plus performance and retrieval analysis
 
 ## Tests and Docker
 
@@ -162,6 +175,7 @@ GitHub Actions runs pytest and builds the Docker image. CI never calls the live 
 - Claim extraction and semantic mapping depend on Gemini and may vary across runs.
 - Evidence anchoring checks location and verbatim text after conservative normalization, not semantic support.
 - Keyword retrieval can miss relevant files that do not repeat the dataset, metric, or value.
+- The saved SoccerMaster counts describe one development run only; there is not yet a human-reviewed multi-paper evaluation set.
 - Only small UTF-8 text artifacts are loaded. Large configs, generated files, checkpoints, datasets, and binary artifacts are not inspected as document content.
 - Retrieved repository text is sent to Gemini. Analyze only repositories whose selected text is safe to share with the configured API provider.
 - A `SUPPORTED` mapping means relevant repository evidence was found. It does not mean the claim was experimentally reproduced.
