@@ -29,3 +29,9 @@ class RepoArtifact(BaseModel):
 
 class ClaimExtractionResult(BaseModel):
     claims: list[ExperimentalClaim]
+
+
+class RepoDocument(BaseModel):
+    path: str
+    artifact_type: str
+    content: str
