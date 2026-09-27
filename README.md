@@ -163,6 +163,7 @@ GitHub Actions runs pytest and builds the Docker image. CI never calls the live 
 - Evidence anchoring checks location and verbatim text after conservative normalization, not semantic support.
 - Keyword retrieval can miss relevant files that do not repeat the dataset, metric, or value.
 - Only small UTF-8 text artifacts are loaded. Large configs, generated files, checkpoints, datasets, and binary artifacts are not inspected as document content.
+- Retrieved repository text is sent to Gemini. Analyze only repositories whose selected text is safe to share with the configured API provider.
 - A `SUPPORTED` mapping means relevant repository evidence was found. It does not mean the claim was experimentally reproduced.
 - No training, inference, arbitrary repository commands, GPU jobs, or LLM-based judging are performed.
 

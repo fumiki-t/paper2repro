@@ -58,6 +58,7 @@ def load_repository_documents(
     unusual file cannot stop the analysis pipeline.
     """
     documents: list[RepoDocument] = []
+    resolved_root = root.resolve()
     ordered_artifacts = sorted(
         artifacts,
         key=lambda item: (_TYPE_PRIORITY.get(item.artifact_type, 4), item.path),
@@ -72,10 +73,13 @@ def load_repository_documents(
 
         file_path = root / Path(*relative_path.parts)
         try:
+            if file_path.is_symlink():
+                continue
+            file_path.resolve().relative_to(resolved_root)
             if not file_path.is_file() or file_path.stat().st_size > max_file_size:
                 continue
             content = file_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError, ValueError):
             continue
 
         if "\x00" in content:

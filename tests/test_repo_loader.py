@@ -65,3 +65,17 @@ def test_loader_skips_invalid_utf8_without_stopping(tmp_path: Path) -> None:
     documents = load_repository_documents(tmp_path, artifacts)
 
     assert [document.path for document in documents] == ["good.toml"]
+
+
+def test_loader_skips_symlinks_outside_repository(tmp_path: Path) -> None:
+    outside_file = tmp_path.parent / "outside-paper2repro.txt"
+    outside_file.write_text("do not load", encoding="utf-8")
+    link = tmp_path / "linked.txt"
+    link.symlink_to(outside_file)
+
+    documents = load_repository_documents(
+        tmp_path,
+        [RepoArtifact(path="linked.txt", artifact_type="other")],
+    )
+
+    assert documents == []
