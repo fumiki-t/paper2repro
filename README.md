@@ -8,14 +8,16 @@ Reproducing a reported result often requires details spread across a paper, conf
 
 ## What Paper2Repro does
 
-The current code provides basic data models, repository file inventory, and selectable-text extraction from local PDFs. It does not yet extract claims or assess whether a result is reproducible.
+The current code provides repository file inventory, selectable-text extraction from local PDFs, and Gemini structured extraction of experimental claims. Extracted claims retain page-numbered paper excerpts that can be checked against the supplied page text.
 
 ## Architecture
 
 - `models.py`: paper chunks, experimental claims, and repository artifacts.
 - `repo/inventory.py`: classifies repository files into broad artifact types.
 - `pdf.py`: converts each PDF page into a `PaperChunk`.
-- `llm.py`: provider-neutral interface for future Pydantic structured output.
+- `llm.py` and `providers/gemini.py`: provider interface and Gemini structured-output implementation.
+- `claims/extractor.py`: page-tagged paper text to structured experimental claims.
+- `claims/evidence.py`: deterministic page and excerpt validation.
 - `report.py`: small Markdown rendering scaffold.
 - `api.py`: minimal FastAPI health endpoint and analysis placeholder.
 
@@ -23,23 +25,25 @@ The current code provides basic data models, repository file inventory, and sele
 
 - Inventory files under a local repository directory.
 - Extract selectable text and page numbers from a local PDF.
+- Extract main quantitative experimental claims using Gemini structured output.
+- Store paper evidence as page and excerpt, then validate page membership and excerpt text deterministically.
 - Run a minimal HTTP API and render simple Markdown sections.
 
-Claim extraction, claim-to-repository evidence mapping, and reproducibility judgments are not implemented.
+Repository evidence retrieval and claim-to-repository mapping, and reproducibility judgments are not implemented.
 
 ## Limitations
 
 - Scanned PDFs are not OCR processed.
 - Repository inventory classifies paths only; it does not inspect artifact contents or establish that evidence supports a claim.
-- The LLM interface has no provider implementation and does not make API calls.
+- Gemini claim extraction requires a valid `PAPER2REPRO_API_KEY` and makes an external API call.
+- Evidence validation checks page and excerpt text after whitespace normalization; it does not judge whether the excerpt semantically supports the claim.
 - The analysis endpoint is a stub.
 
 ## Future work
 
-- Design and implement experimental claim extraction.
 - Connect claims to repository evidence with traceable references.
 - Define and implement the reproducibility audit criteria.
-- Add a provider implementation behind the LLM interface.
+- Evaluate claim extraction quality across a curated set of papers.
 
 ## Setup
 
@@ -47,10 +51,12 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-cp .env.example .env  # optional; set PAPER2REPRO_API_KEY when integrating a provider
+export PAPER2REPRO_API_KEY="your-gemini-api-key"
+# Optional model override; defaults to gemini-3.8-flash.
+export PAPER2REPRO_MODEL="gemini-3.8-flash"
 ```
 
-`Settings.from_env()` can read `PAPER2REPRO_API_KEY` from the process environment. The current API and LLM interface do not consume it yet. No `.env` loader is enabled; export the variable in your shell or load the file with your preferred local tooling.
+`Settings.from_env()` reads both variables from the process environment. `.env.example` documents them, but `.env` files are not loaded automatically.
 
 ## Usage
 
@@ -71,6 +77,28 @@ from paper2repro.pdf import parse_pdf
 
 chunks = parse_pdf(Path("paper.pdf"))
 ```
+
+Extract and validate experimental claims:
+
+```python
+from paper2repro.claims.evidence import validate_evidence
+from paper2repro.claims.extractor import extract_claims
+from paper2repro.config import Settings
+from paper2repro.pdf import parse_pdf
+from paper2repro.providers.gemini import GeminiClient
+
+chunks = parse_pdf(Path("paper.pdf"))
+claims = extract_claims(chunks, GeminiClient(Settings.from_env()))
+validation = validate_evidence(chunks, claims)
+```
+
+The manual integration check uses a short synthetic paper passage and skips when no API key is set:
+
+```bash
+uv run python scripts/manual_gemini_claim_extraction.py
+```
+
+The Gemini SDK uses JSON Schema structured output derived from the requested Pydantic model. Each claim contains one or more page-numbered excerpts; deterministic validation reports missing pages and excerpts without deleting claims.
 
 Run the API and check its health endpoint:
 
