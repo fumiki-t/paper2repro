@@ -1,10 +1,9 @@
 """Deterministic validation that paper evidence quotes source page text."""
 
 from dataclasses import dataclass
-import re
-import unicodedata
 
 from paper2repro.models import ClaimExtractionResult, PaperChunk
+from paper2repro.text import contains_normalized_excerpt, normalize_extracted_text
 
 
 @dataclass(frozen=True)
@@ -17,18 +16,6 @@ class EvidenceValidation:
     excerpt: str
     is_valid: bool
     reason: str | None = None
-
-
-_LINE_BREAK_HYPHENATION = re.compile(
-    r"(?<=[^\W\d_])[-\u2010]\s*\n\s*(?=[^\W\d_])"
-)
-
-
-def _normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    text = "".join(char for char in text if unicodedata.category(char) != "Cf")
-    text = _LINE_BREAK_HYPHENATION.sub("", text)
-    return re.sub(r"\s+", " ", text).strip()
 
 
 def validate_evidence(
@@ -44,10 +31,7 @@ def validate_evidence(
     comparison ignores whitespace only; characters, digits, and punctuation
     remain significant.
     """
-    page_text = {chunk.page: _normalize_text(chunk.text) for chunk in chunks}
-    compact_page_text = {
-        page: re.sub(r"\s+", "", text) for page, text in page_text.items()
-    }
+    page_text = {chunk.page: chunk.text for chunk in chunks}
     validations: list[EvidenceValidation] = []
 
     for claim_index, claim in enumerate(result.claims, start=1):
@@ -56,16 +40,12 @@ def validate_evidence(
                 is_valid = False
                 reason = "page_not_found"
             else:
-                excerpt = _normalize_text(evidence.excerpt)
+                excerpt = normalize_extracted_text(evidence.excerpt)
                 if not excerpt:
                     is_valid = False
                     reason = "empty_excerpt"
-                elif excerpt in page_text[evidence.page]:
-                    is_valid = True
-                    reason = None
-                elif (
-                    re.sub(r"\s+", "", excerpt)
-                    in compact_page_text[evidence.page]
+                elif contains_normalized_excerpt(
+                    page_text[evidence.page], evidence.excerpt
                 ):
                     is_valid = True
                     reason = None
