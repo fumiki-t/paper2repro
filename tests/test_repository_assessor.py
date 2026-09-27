@@ -95,7 +95,7 @@ def test_assessor_downgrades_unanchored_mapping_and_present_audit() -> None:
     checkpoint = next(
         item for item in grounded.assessment.audit if item.check == "checkpoint"
     )
-    assert checkpoint.status == "AMBIGUOUS"
+    assert checkpoint.status == "NOT_FOUND"
     assert not grounded.mapping_validation[0].is_valid
     assert any("path_not_retrieved" in warning for warning in grounded.warnings)
 
@@ -109,3 +109,35 @@ def test_assessor_skips_llm_when_retrieval_is_empty() -> None:
 
     assert grounded.assessment.mapping.status == "UNSUPPORTED"
     assert all(item.status == "NOT_FOUND" for item in grounded.assessment.audit)
+
+
+def test_ambiguous_requires_at_least_one_valid_repository_excerpt() -> None:
+    assessment = ClaimRepositoryAssessment(
+        mapping=ClaimRepositoryMapping(
+            status="UNSUPPORTED", evidence=[], explanation="No mapping evidence."
+        ),
+        audit=[
+            AuditItem(
+                check="checkpoint",
+                status="AMBIGUOUS",
+                evidence=[_evidence("checkpoint at fake/path.bin", path="README.md")],
+                notes="Related information may exist.",
+            ),
+            AuditItem(
+                check="environment_dependencies",
+                status="AMBIGUOUS",
+                evidence=[_evidence("SoccerNet with mAP")],
+                notes="Real but incomplete related information.",
+            ),
+        ],
+    )
+
+    grounded = assess_claim_repository(
+        _claim(), [_document()], StubLLMClient(assessment)
+    )
+    items = {item.check: item for item in grounded.assessment.audit}
+
+    assert items["checkpoint"].status == "NOT_FOUND"
+    assert "Retrieved documents were available" in items["checkpoint"].notes
+    assert items["environment_dependencies"].status == "AMBIGUOUS"
+    assert any("checkpoint" in warning and "NOT_FOUND" in warning for warning in grounded.warnings)

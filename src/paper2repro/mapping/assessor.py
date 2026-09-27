@@ -117,11 +117,21 @@ def assess_claim_repository(
                     f"{validation.evidence_index} is invalid: {validation.reason}."
                 )
         has_valid_evidence = any(validation.is_valid for validation in validations)
-        if item.status == "PRESENT" and not has_valid_evidence:
-            replacement = "AMBIGUOUS" if item.evidence else "NOT_FOUND"
+        if item.status in {"PRESENT", "AMBIGUOUS"} and not has_valid_evidence:
+            replacement = "NOT_FOUND"
+            if documents:
+                item = item.model_copy(
+                    update={
+                        "notes": (
+                            item.notes.rstrip()
+                            + " Retrieved documents were available, but none of the "
+                            "returned excerpts could be anchored."
+                        )
+                    }
+                )
             warnings.append(
                 f"Audit item {item.check} was downgraded to {replacement} because "
-                "no evidence could be anchored."
+                "no repository evidence could be anchored."
             )
             item = item.model_copy(update={"status": replacement})
         grounded_audit.append(item)
