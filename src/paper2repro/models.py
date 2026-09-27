@@ -73,3 +73,44 @@ class AuditItem(BaseModel):
 class ClaimRepositoryAssessment(BaseModel):
     mapping: ClaimRepositoryMapping
     audit: list[AuditItem]
+
+
+class PaperEvidenceCheck(BaseModel):
+    page: int
+    excerpt: str
+    is_valid: bool
+    reason: str | None = None
+
+
+class RepoEvidenceCheck(BaseModel):
+    evidence_index: int
+    path: str
+    excerpt: str
+    is_valid: bool
+    reason: str | None = None
+
+
+class AuditEvidenceChecks(BaseModel):
+    check: AuditCheck
+    evidence: list[RepoEvidenceCheck]
+
+
+class ClaimAnalysis(BaseModel):
+    claim: ExperimentalClaim
+    paper_evidence_validation: list[PaperEvidenceCheck]
+    retrieved_documents: list[str]
+    mapping: ClaimRepositoryMapping
+    mapping_evidence_validation: list[RepoEvidenceCheck]
+    audit: list[AuditItem]
+    audit_evidence_validation: list[AuditEvidenceChecks]
+    warnings: list[str] = []
+
+
+class AnalysisReport(BaseModel):
+    paper: str
+    repository: str
+    repository_artifact_count: int
+    repository_document_count: int
+    claims: list[ClaimAnalysis]
+    warnings: list[str]
+    limitations: list[str]
