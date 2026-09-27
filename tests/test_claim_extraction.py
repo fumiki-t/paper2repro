@@ -22,3 +22,5 @@ def test_extractor_sends_page_tagged_prompt_and_returns_result() -> None:
     assert client.response_model is ClaimExtractionResult
     assert "[PAGE 7]\nA result." in client.prompt
     assert "verbatim passage" in client.prompt
+    assert "Keep claims atomic" in client.prompt
+    assert "different tasks or metrics into separate claims" in client.prompt

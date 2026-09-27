@@ -92,6 +92,13 @@ claims = extract_claims(chunks, GeminiClient(Settings.from_env()))
 validation = validate_evidence(chunks, claims)
 ```
 
+Run the same flow for a local paper PDF from the command line:
+
+```bash
+export PAPER2REPRO_API_KEY="your-gemini-api-key"
+uv run python scripts/analyze_pdf_claims.py path/to/paper.pdf
+```
+
 The manual integration check uses a short synthetic paper passage and skips when no API key is set:
 
 ```bash
@@ -99,6 +106,8 @@ uv run python scripts/manual_gemini_claim_extraction.py
 ```
 
 The Gemini SDK uses JSON Schema structured output derived from the requested Pydantic model. Each claim contains one or more page-numbered excerpts; deterministic validation reports missing pages and excerpts without deleting claims.
+
+The extractor asks Gemini to keep each claim focused on one primary quantitative result. Deterministic validation deliberately rejects an excerpt when Gemini cites the wrong PDF page, even if similar text exists on another page. In the SoccerMaster case, a camera-calibration excerpt was cited as page 8 although the extracted sentence appeared on page 9; this remained invalid rather than weakening the page check.
 
 Run the API and check its health endpoint:
 

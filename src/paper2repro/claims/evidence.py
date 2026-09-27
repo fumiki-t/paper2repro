@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import re
+import unicodedata
 
 from paper2repro.models import ClaimExtractionResult, PaperChunk
 
@@ -18,7 +19,15 @@ class EvidenceValidation:
     reason: str | None = None
 
 
-def _normalize_whitespace(text: str) -> str:
+_LINE_BREAK_HYPHENATION = re.compile(
+    r"(?<=[^\W\d_])[-\u2010]\s*\n\s*(?=[^\W\d_])"
+)
+
+
+def _normalize_text(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = "".join(char for char in text if unicodedata.category(char) != "Cf")
+    text = _LINE_BREAK_HYPHENATION.sub("", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -27,11 +36,18 @@ def validate_evidence(
 ) -> list[EvidenceValidation]:
     """Check that each excerpt appears on the cited input page.
 
-    Whitespace runs are normalized before comparison to accommodate PDF text
-    extraction line breaks. This checks textual grounding only; it does not
-    judge whether the excerpt semantically supports the claim.
+    Validation means only that the requested excerpt can be anchored to text
+    extracted from the cited PDF page. It does not determine whether that
+    excerpt semantically supports the claim. Text is normalized with Unicode
+    NFKC, invisible format-character removal, line-break hyphenation repair,
+    and whitespace collapsing. If direct substring matching fails, a second
+    comparison ignores whitespace only; characters, digits, and punctuation
+    remain significant.
     """
-    page_text = {chunk.page: _normalize_whitespace(chunk.text) for chunk in chunks}
+    page_text = {chunk.page: _normalize_text(chunk.text) for chunk in chunks}
+    compact_page_text = {
+        page: re.sub(r"\s+", "", text) for page, text in page_text.items()
+    }
     validations: list[EvidenceValidation] = []
 
     for claim_index, claim in enumerate(result.claims, start=1):
@@ -40,11 +56,17 @@ def validate_evidence(
                 is_valid = False
                 reason = "page_not_found"
             else:
-                excerpt = _normalize_whitespace(evidence.excerpt)
+                excerpt = _normalize_text(evidence.excerpt)
                 if not excerpt:
                     is_valid = False
                     reason = "empty_excerpt"
                 elif excerpt in page_text[evidence.page]:
+                    is_valid = True
+                    reason = None
+                elif (
+                    re.sub(r"\s+", "", excerpt)
+                    in compact_page_text[evidence.page]
+                ):
                     is_valid = True
                     reason = None
                 else:
