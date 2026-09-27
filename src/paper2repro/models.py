@@ -106,6 +106,39 @@ class ClaimAnalysis(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class LLMRequestMetric(BaseModel):
+    model: str
+    response_model: str
+    prompt_characters: int
+    response_characters: int
+    elapsed_seconds: float
+
+
+class ClaimRuntimeMetric(BaseModel):
+    claim_index: int
+    retrieval_seconds: float
+    mapping_audit_seconds: float
+    total_seconds: float
+    cache_hit: bool
+
+
+class PerformanceMetrics(BaseModel):
+    total_elapsed_seconds: float | None = None
+    pdf_parsing_seconds: float | None = None
+    claim_extraction_seconds: float | None = None
+    repository_preparation_seconds: float | None = None
+    inventory_loading_seconds: float | None = None
+    retrieval_seconds_total: float | None = None
+    report_generation_seconds: float | None = None
+    llm_request_count: int | None = None
+    prompt_characters_total: int | None = None
+    response_characters_total: int | None = None
+    cache_hits: int | None = None
+    cache_misses: int | None = None
+    llm_requests: list[LLMRequestMetric] = Field(default_factory=list)
+    claims: list[ClaimRuntimeMetric] = Field(default_factory=list)
+
+
 class AnalysisReport(BaseModel):
     paper: str
     repository: str
@@ -114,3 +147,4 @@ class AnalysisReport(BaseModel):
     claims: list[ClaimAnalysis]
     warnings: list[str]
     limitations: list[str]
+    performance: PerformanceMetrics = Field(default_factory=PerformanceMetrics)

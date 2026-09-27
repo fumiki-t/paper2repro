@@ -11,6 +11,7 @@ from paper2repro.models import (
     RepoEvidence,
 )
 from paper2repro.pipeline import analyze
+from paper2repro.observability import LLMCallBudgetExceeded
 from paper2repro.report import write_analysis_report
 
 
@@ -114,6 +115,122 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     markdown = markdown_path.read_text(encoding="utf-8")
     assert "**VALID**" in markdown
     assert "**evaluation_protocol_metric: PRESENT**" in markdown
+    assert "## Summary" in markdown
+    assert "| # | Claim | Dataset | Metric / value | Paper evidence | Mapping |" in markdown
+    assert "LLM requests: 2" in markdown
+    assert "not token counts" in markdown
+
+
+def test_pipeline_cache_reuses_extraction_and_mapping_and_invalidates_changed_docs(
+    tmp_path: Path, monkeypatch
+) -> None:
+    class CountingClient(PipelineLLMClient):
+        def __init__(self):
+            self.calls = 0
+
+        def generate_structured(self, prompt, response_model):
+            self.calls += 1
+            return super().generate_structured(prompt, response_model)
+
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"paper")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    readme = repository / "README.md"
+    readme.write_text(
+        "Evaluate SoccerNet mAP 72.4 with python evaluate.py", encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "paper2repro.pipeline.parse_pdf",
+        lambda path: [
+            PaperChunk(page=1, text="The method reaches 72.4 mAP on SoccerNet.")
+        ],
+    )
+    client = CountingClient()
+    cache_dir = tmp_path / "cache"
+
+    first = analyze(
+        paper_path, repository, client, model_name="fake-v1", cache_dir=cache_dir
+    )
+    second = analyze(
+        paper_path, repository, client, model_name="fake-v1", cache_dir=cache_dir
+    )
+
+    assert client.calls == 2
+    assert first.performance.llm_request_count == 2
+    assert second.performance.llm_request_count == 0
+    assert second.performance.cache_hits == 2
+    cache_records = list(cache_dir.glob("*.json"))
+    assert len(cache_records) == 2
+    assert all(
+        '"metadata"' in path.read_text(encoding="utf-8") for path in cache_records
+    )
+
+    readme.write_text(
+        readme.read_text(encoding="utf-8") + " Updated repository document.",
+        encoding="utf-8",
+    )
+    third = analyze(
+        paper_path, repository, client, model_name="fake-v1", cache_dir=cache_dir
+    )
+    assert client.calls == 3
+    assert third.performance.cache_hits == 1
+    assert third.performance.llm_request_count == 1
+
+
+def test_pipeline_call_budget_blocks_mapping_and_reuses_completed_extraction(
+    tmp_path: Path, monkeypatch
+) -> None:
+    class CountingClient(PipelineLLMClient):
+        def __init__(self):
+            self.calls = 0
+
+        def generate_structured(self, prompt, response_model):
+            self.calls += 1
+            return super().generate_structured(prompt, response_model)
+
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"paper")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "README.md").write_text("SoccerNet mAP 72.4", encoding="utf-8")
+    monkeypatch.setattr(
+        "paper2repro.pipeline.parse_pdf",
+        lambda path: [
+            PaperChunk(page=1, text="The method reaches 72.4 mAP on SoccerNet.")
+        ],
+    )
+    client = CountingClient()
+    cache_dir = tmp_path / "cache"
+
+    try:
+        analyze(
+            paper_path,
+            repository,
+            client,
+            model_name="fake-v1",
+            cache_dir=cache_dir,
+            max_llm_calls=1,
+        )
+    except LLMCallBudgetExceeded:
+        pass
+    else:
+        raise AssertionError("The mapping request should exceed the one-call budget")
+
+    assert client.calls == 1
+    assert len(list(cache_dir.glob("*.json"))) == 1
+
+    resumed = analyze(
+        paper_path,
+        repository,
+        client,
+        model_name="fake-v1",
+        cache_dir=cache_dir,
+        max_llm_calls=1,
+    )
+    assert client.calls == 2
+    assert resumed.performance.cache_hits == 1
+    assert resumed.performance.llm_request_count == 1
 
 
 def test_report_keeps_invalid_paper_evidence_visible(
