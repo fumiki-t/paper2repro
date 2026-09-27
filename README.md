@@ -1,115 +1,190 @@
 # Paper2Repro
 
-Paper2Repro is a small research prototype for auditing whether a machine learning paper's experimental claims can be connected to evidence in its official repository.
+Paper2Repro is a small research prototype for claim-level, evidence-grounded reproducibility auditing of machine learning papers and their official repositories.
+
+It extracts the main quantitative results from a paper, checks that every paper quote exists on the cited PDF page, retrieves relevant repository files, maps each claim to repository evidence, and produces a structured reproduction checklist. It generates `report.json` and `report.md`; it does not run training or claim that a reported result has been reproduced.
 
 ## Why this problem?
 
-Reproducing a reported result often requires details spread across a paper, configuration files, scripts, checkpoints, and environment descriptions. Paper2Repro aims to make those connections easier to inspect.
+The information needed to reproduce one result is often split across the paper, README, configs, scripts, checkpoints, and environment files. Repository-level summaries can hide which artifact supports which reported number. Paper2Repro keeps the experimental claim as the unit of analysis and preserves the path from every conclusion back to quoted evidence.
 
-## What Paper2Repro does
+Compared with systems focused on executing repositories, Paper2Repro currently focuses on inspecting whether reproducibility information is present and traceable. Compared with general retrieval-augmented generation, it validates every cited page, path, and excerpt with deterministic code before presenting it as grounded evidence.
 
-The current code provides repository file inventory, selectable-text extraction from local PDFs, and Gemini structured extraction of experimental claims. Extracted claims retain page-numbered paper excerpts that can be checked against the supplied page text.
+## Core idea
 
-## Architecture
+```mermaid
+flowchart LR
+    PDF[Paper PDF] --> P[Page text]
+    P --> C[Atomic experimental claims]
+    C --> PV[Paper evidence validation]
+    R[Local repo or GitHub URL] --> I[Artifact inventory]
+    I --> L[Text document loader]
+    C --> K[Keyword retrieval]
+    L --> K
+    K --> M[Gemini mapping and checklist]
+    M --> RV[Repository evidence validation]
+    PV --> O[JSON and Markdown report]
+    RV --> O
+```
 
-- `models.py`: paper chunks, experimental claims, and repository artifacts.
-- `repo/inventory.py`: classifies repository files into broad artifact types.
-- `pdf.py`: converts each PDF page into a `PaperChunk`.
-- `llm.py` and `providers/gemini.py`: provider interface and Gemini structured-output implementation.
-- `claims/extractor.py`: page-tagged paper text to structured experimental claims.
-- `claims/evidence.py`: deterministic page and excerpt validation.
-- `report.py`: small Markdown rendering scaffold.
-- `api.py`: minimal FastAPI health endpoint and analysis placeholder.
+The LLM performs bounded extraction and semantic classification. Deterministic code handles page existence, path existence, and verbatim excerpt anchoring. Invalid evidence stays visible in the report and cannot silently justify a positive status.
 
-## Current v0.1 scope
+## Data flow
 
-- Inventory files under a local repository directory.
-- Extract selectable text and page numbers from a local PDF.
-- Extract main quantitative experimental claims using Gemini structured output.
-- Store paper evidence as page and excerpt, then validate page membership and excerpt text deterministically.
-- Run a minimal HTTP API and render simple Markdown sections.
+1. `parse_pdf()` converts selectable PDF text into page-numbered `PaperChunk` objects.
+2. Gemini structured output creates atomic `ExperimentalClaim` objects with paper evidence.
+3. Paper excerpts are anchored to the cited page using conservative normalization.
+4. A local repository is used directly, or a public GitHub repository is shallow-cloned into a temporary directory.
+5. The inventory is converted into bounded UTF-8 `RepoDocument` objects. Binary, generated, cached, and files larger than 256 KB are skipped to bound memory and prompt size.
+6. The lexical baseline scores `path + content` using the claim's dataset, metric, and reported value, drops zero-score documents, and returns the top `k`.
+7. Gemini receives only those retrieved documents and returns a claim mapping plus a seven-item reproduction checklist.
+8. Every repository path and excerpt is validated against the retrieved documents. Unsupported positive statuses are downgraded.
+9. The pipeline writes the complete structured result to JSON and a review-oriented Markdown report.
 
-Repository evidence retrieval and claim-to-repository mapping, and reproducibility judgments are not implemented.
+## Reproduction checklist
 
-## Limitations
+Each claim is checked for:
 
-- Scanned PDFs are not OCR processed.
-- Repository inventory classifies paths only; it does not inspect artifact contents or establish that evidence supports a claim.
-- Gemini claim extraction requires a valid `PAPER2REPRO_API_KEY` and makes an external API call.
-- Evidence validation checks page and excerpt text after whitespace normalization; it does not judge whether the excerpt semantically supports the claim.
-- The analysis endpoint is a stub.
+- dataset or data preparation
+- model or configuration
+- checkpoint
+- training or inference command
+- environment or dependencies
+- random seed
+- evaluation protocol or metric
 
-## Future work
+Statuses are `PRESENT`, `AMBIGUOUS`, and `NOT_FOUND`. `NOT_FOUND` means the information was not found in the inspected retrieved artifacts; it does not prove that the information is absent from the entire repository.
 
-- Connect claims to repository evidence with traceable references.
-- Define and implement the reproducibility audit criteria.
-- Evaluate claim extraction quality across a curated set of papers.
+## Why deterministic validation?
+
+Structured output controls shape, but it does not guarantee that an excerpt or location is real. Paper2Repro therefore rejects a paper excerpt when the cited page does not contain it and rejects repository evidence when the retrieved path or excerpt cannot be found.
+
+In a SoccerMaster development run, Gemini cited PDF page 8 for camera-calibration evidence whose extracted sentence appeared on page 9. The validator marked it invalid. The check deliberately did not search nearby pages, because doing so would hide an incorrect citation.
+
+Validation normalizes Unicode, removes invisible format characters, repairs line-break hyphenation, and tolerates whitespace extraction errors. It does not use edit distance, embeddings, or semantic entailment; different numbers and punctuation remain different evidence.
+
+## Why keyword retrieval first?
+
+The v0.1 retriever is an intentionally simple lexical baseline. It matches only the claim's dataset, metric, and reported value against each `path + content`; it does not use the claim statement. In one SoccerMaster development run, the tool extracted 9 claims, anchored 21/21 paper evidence excerpts to their cited page, mapped 4/9 claims to at least partial repository information, and inspected 740 artifacts / 621 text documents. These are outputs from one run, not accuracy or general quality scores. The baseline returned no documents for Claims 4 and 8 and repeated unrelated candidates for Claims 2 and 9. Therefore `NOT_FOUND` applies only to retrieved and inspected files, and does not mean repository-wide absence. See [retrieval analysis](docs/SOCCERMASTER_RETRIEVAL_ANALYSIS.md).
 
 ## Setup
 
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.11+, Git, and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
 export PAPER2REPRO_API_KEY="your-gemini-api-key"
-# Optional model override; defaults to gemini-3.8-flash.
+# Optional; defaults to gemini-3.8-flash.
 export PAPER2REPRO_MODEL="gemini-3.8-flash"
 ```
 
-`Settings.from_env()` reads both variables from the process environment. `.env.example` documents them, but `.env` files are not loaded automatically.
+`.env.example` documents the variables. `.env` is ignored and is not loaded automatically.
 
-## Usage
+## End-to-end CLI
 
-Inventory a repository from Python:
+Analyze a local PDF with either a local repository path or a public GitHub URL:
 
-```python
-from pathlib import Path
-from paper2repro.repo.inventory import inventory_repository
-
-artifacts = inventory_repository(Path("/path/to/repository"))
+```bash
+uv run python scripts/analyze.py \
+  --paper local_data/soccermaster.pdf \
+  --repo https://github.com/haolinyang-hlyang/SoccerMaster \
+  --output outputs/soccermaster
 ```
 
-Extract PDF text from Python:
+The CLI prints claim, evidence, mapping, and checklist counts and writes:
 
-```python
-from pathlib import Path
-from paper2repro.pdf import parse_pdf
+- `outputs/soccermaster/report.json`
+- `outputs/soccermaster/report.md`
 
-chunks = parse_pdf(Path("paper.pdf"))
+The CLI also prints stage timing and LLM request measurements. Prompt/response character counts are text lengths, not token or billing counts. Successful structured responses are cached in the gitignored `.paper2repro_cache/` directory so a later run can resume after a provider error. Cache JSON may include paper claims and repository excerpts, so keep it local. Use `--cache-dir PATH` to choose another location or `--no-cache` to disable it. `--max-llm-calls N` optionally blocks the next provider request after N calls; without the flag, there is no call cap. The Gemini SDK is configured for one attempt per request, with no automatic retries.
+
+To inspect retrieval from an existing JSON report without calling an LLM:
+
+```bash
+uv run python scripts/debug_retrieval.py \
+  --report outputs/soccermaster/report.json \
+  --repo /path/to/SoccerMaster \
+  --top-k 5
 ```
 
-Extract and validate experimental claims:
+New Markdown reports start with a claim summary table and include counts for paper evidence, mapping statuses, and the seven-item audit. For a claim with no retrieved documents, its `NOT_FOUND` items explicitly refer to an empty inspected set.
 
-```python
-from paper2repro.claims.evidence import validate_evidence
-from paper2repro.claims.extractor import extract_claims
-from paper2repro.config import Settings
-from paper2repro.pdf import parse_pdf
-from paper2repro.providers.gemini import GeminiClient
+PDFs and `outputs/` are ignored by Git. To inspect paper claims without a repository, use:
 
-chunks = parse_pdf(Path("paper.pdf"))
-claims = extract_claims(chunks, GeminiClient(Settings.from_env()))
-validation = validate_evidence(chunks, claims)
+```bash
+uv run python scripts/analyze_pdf_claims.py path/to/paper.pdf
 ```
 
-The manual integration check uses a short synthetic paper passage and skips when no API key is set:
+The synthetic Gemini smoke script skips cleanly when no API key is set:
 
 ```bash
 uv run python scripts/manual_gemini_claim_extraction.py
 ```
 
-The Gemini SDK uses JSON Schema structured output derived from the requested Pydantic model. Each claim contains one or more page-numbered excerpts; deterministic validation reports missing pages and excerpts without deleting claims.
+## API
 
-Run the API and check its health endpoint:
+Run the local server:
 
 ```bash
 uv run uvicorn paper2repro.api:app --reload
 ```
 
-Open `http://127.0.0.1:8000/health`. `POST /analysis` currently returns a not-implemented placeholder.
+`GET /health` returns `{"status": "ok"}`. `POST /analysis` runs the same synchronous pipeline for paths accessible to the server:
 
-Run the test suite:
+```json
+{
+  "paper_path": "local_data/soccermaster.pdf",
+  "repository": "https://github.com/haolinyang-hlyang/SoccerMaster",
+  "output_dir": "outputs/api-run",
+  "top_k": 5
+}
+```
+
+The API is a local prototype. It does not implement uploads, background jobs, authentication, or run history.
+
+## Evaluation
+
+`evals/` contains a human-review template and metric definitions for claim precision/recall, paper evidence validity, retrieval Recall@k, repository evidence validity, and audit agreement. The repository does not label LLM output as gold data. Reliable scores require human annotations across multiple paper/repository pairs.
+
+## Project structure
+
+- `claims/`: atomic claim prompting, extraction, and paper evidence validation
+- `repo/`: repository inventory, bounded text loading, source resolution, and evidence validation
+- `retrieval/keyword.py`: inspectable lexical retrieval baseline
+- `mapping/`: claim-to-repository assessment and audit grounding
+- `pipeline.py`: end-to-end orchestration
+- `report.py`: structured JSON and Markdown output
+- `api.py`: minimal FastAPI wrapper around the pipeline
+- `scripts/`: end-to-end and focused manual entry points
+- `tests/`: unit and mocked integration coverage without real Gemini calls
+- `docs/`: Japanese learning/application notes plus performance and retrieval analysis
+
+## Tests and Docker
 
 ```bash
 uv run pytest
+docker build -t paper2repro .
+docker run --rm -p 8000:8000 -e PAPER2REPRO_API_KEY paper2repro
 ```
+
+GitHub Actions runs pytest and builds the Docker image. CI never calls the live Gemini API.
+
+## Limitations
+
+- OCR is not implemented; scanned PDFs may yield empty text.
+- Claim extraction and semantic mapping depend on Gemini and may vary across runs.
+- Evidence anchoring checks location and verbatim text after conservative normalization, not semantic support.
+- Keyword retrieval can miss relevant files that do not repeat the dataset, metric, or value.
+- The saved SoccerMaster counts describe one development run only; there is not yet a human-reviewed multi-paper evaluation set.
+- Only small UTF-8 text artifacts are loaded. Large configs, generated files, checkpoints, datasets, and binary artifacts are not inspected as document content.
+- Retrieved repository text is sent to Gemini. Analyze only repositories whose selected text is safe to share with the configured API provider.
+- A `SUPPORTED` mapping means relevant repository evidence was found. It does not mean the claim was experimentally reproduced.
+- No training, inference, arbitrary repository commands, GPU jobs, or LLM-based judging are performed.
+
+## Future work
+
+- Build and human-review a multi-paper evaluation set.
+- Compare the lexical baseline with BM25 and embedding retrieval after measuring failure modes.
+- Add better document segmentation and line locations while keeping evidence validation deterministic.
+- Add asynchronous API jobs and persisted run metadata if real usage requires them.
+- Separate artifact availability from executable reproducibility through controlled execution in a later version.

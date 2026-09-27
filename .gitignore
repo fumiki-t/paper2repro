@@ -2,7 +2,12 @@
 .env.*
 !.env.example
 .venv/
+dist/
+*.egg-info/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
+*.pdf
+outputs/
+.paper2repro_cache/

@@ -3,12 +3,42 @@
 from typing import Any, TypeVar
 
 from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 from paper2repro.config import Settings
 
 
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
+
+
+class GeminiProviderError(RuntimeError):
+    """Provider failure with a concise category; the SDK error remains ``__cause__``."""
+
+    def __init__(self, category: str) -> None:
+        self.provider = "Gemini"
+        self.category = category
+        super().__init__(f"Gemini request failed ({category}).")
+
+
+def _error_category(error: Exception) -> str:
+    name = type(error).__name__.lower()
+    status = getattr(error, "status_code", None) or getattr(error, "code", None)
+    status_text = str(status).lower()
+    if (
+        status == 429
+        or "429" in status_text
+        or "resourceexhausted" in name
+        or "ratelimit" in name
+    ):
+        return "rate_limit"
+    if status in {401, 403} or "unauthenticated" in name or "permissiondenied" in name:
+        return "authentication_or_permission"
+    if "timeout" in name or isinstance(error, TimeoutError):
+        return "timeout"
+    if "connection" in name or isinstance(error, ConnectionError):
+        return "connection"
+    return "provider_error"
 
 
 class GeminiClient:
@@ -25,23 +55,31 @@ class GeminiClient:
             raise ValueError("Set PAPER2REPRO_API_KEY before using GeminiClient.")
 
         self.model = settings.model
-        self._client = client or genai.Client(api_key=settings.api_key)
+        self._client = client or genai.Client(
+            api_key=settings.api_key,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(attempts=1)
+            ),
+        )
 
     def generate_structured(
         self, prompt: str, response_model: type[OutputModel]
     ) -> OutputModel:
         """Ask Gemini for output constrained by the Pydantic JSON schema."""
-        interaction = self._client.interactions.create(
-            model=self.model,
-            input=prompt,
-            response_format=[
-                {
-                    "type": "text",
-                    "mime_type": "application/json",
-                    "schema": response_model.model_json_schema(),
-                }
-            ],
-        )
+        try:
+            interaction = self._client.interactions.create(
+                model=self.model,
+                input=prompt,
+                response_format=[
+                    {
+                        "type": "text",
+                        "mime_type": "application/json",
+                        "schema": response_model.model_json_schema(),
+                    }
+                ],
+            )
+        except Exception as error:
+            raise GeminiProviderError(_error_category(error)) from error
         output_text = interaction.output_text
         if not output_text:
             raise ValueError("Gemini returned no structured output text.")

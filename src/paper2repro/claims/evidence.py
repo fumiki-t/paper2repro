@@ -1,9 +1,9 @@
 """Deterministic validation that paper evidence quotes source page text."""
 
 from dataclasses import dataclass
-import re
 
 from paper2repro.models import ClaimExtractionResult, PaperChunk
+from paper2repro.text import contains_normalized_excerpt, normalize_extracted_text
 
 
 @dataclass(frozen=True)
@@ -18,20 +18,20 @@ class EvidenceValidation:
     reason: str | None = None
 
 
-def _normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
-
-
 def validate_evidence(
     chunks: list[PaperChunk], result: ClaimExtractionResult
 ) -> list[EvidenceValidation]:
     """Check that each excerpt appears on the cited input page.
 
-    Whitespace runs are normalized before comparison to accommodate PDF text
-    extraction line breaks. This checks textual grounding only; it does not
-    judge whether the excerpt semantically supports the claim.
+    Validation means only that the requested excerpt can be anchored to text
+    extracted from the cited PDF page. It does not determine whether that
+    excerpt semantically supports the claim. Text is normalized with Unicode
+    NFKC, invisible format-character removal, line-break hyphenation repair,
+    and whitespace collapsing. If direct substring matching fails, a second
+    comparison ignores whitespace only; characters, digits, and punctuation
+    remain significant.
     """
-    page_text = {chunk.page: _normalize_whitespace(chunk.text) for chunk in chunks}
+    page_text = {chunk.page: chunk.text for chunk in chunks}
     validations: list[EvidenceValidation] = []
 
     for claim_index, claim in enumerate(result.claims, start=1):
@@ -40,11 +40,13 @@ def validate_evidence(
                 is_valid = False
                 reason = "page_not_found"
             else:
-                excerpt = _normalize_whitespace(evidence.excerpt)
+                excerpt = normalize_extracted_text(evidence.excerpt)
                 if not excerpt:
                     is_valid = False
                     reason = "empty_excerpt"
-                elif excerpt in page_text[evidence.page]:
+                elif contains_normalized_excerpt(
+                    page_text[evidence.page], evidence.excerpt
+                ):
                     is_valid = True
                     reason = None
                 else:

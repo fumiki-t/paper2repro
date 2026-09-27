@@ -41,6 +41,30 @@ def test_evidence_allows_whitespace_differences() -> None:
     assert validation.is_valid
 
 
+def test_evidence_restores_line_break_hyphenation() -> None:
+    chunks = [PaperChunk(text="The paper is of-\nfering a baseline.", page=3)]
+
+    [validation] = validate_evidence(chunks, _result(3, "offering a baseline"))
+
+    assert validation.is_valid
+
+
+def test_evidence_matches_when_pdf_extraction_lost_whitespace() -> None:
+    chunks = [PaperChunk(text="We use fromour pipeline for training.", page=3)]
+
+    [validation] = validate_evidence(chunks, _result(3, "from our pipeline"))
+
+    assert validation.is_valid
+
+
+def test_evidence_normalizes_unicode_and_invisible_format_characters() -> None:
+    chunks = [PaperChunk(text="The ＳｏｃｃｅｒMas\u00adter model wins.", page=3)]
+
+    [validation] = validate_evidence(chunks, _result(3, "SoccerMaster model"))
+
+    assert validation.is_valid
+
+
 def test_evidence_for_missing_page_is_invalid() -> None:
     chunks = [PaperChunk(text="Some paper text.", page=3)]
 
@@ -51,11 +75,9 @@ def test_evidence_for_missing_page_is_invalid() -> None:
 
 
 def test_hallucinated_excerpt_is_invalid() -> None:
-    chunks = [PaperChunk(text="Our method achieves 72.4 mIoU.", page=3)]
+    chunks = [PaperChunk(text="72.4", page=3)]
 
-    [validation] = validate_evidence(
-        chunks, _result(3, "Our method achieves 99.9 mIoU.")
-    )
+    [validation] = validate_evidence(chunks, _result(3, "99.9"))
 
     assert not validation.is_valid
     assert validation.reason == "excerpt_not_found"
