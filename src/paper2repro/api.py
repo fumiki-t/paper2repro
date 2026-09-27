@@ -25,7 +25,10 @@ class AnalysisRequest(BaseModel):
 
 
 def get_llm_client() -> GeminiClient:
-    return GeminiClient(Settings.from_env())
+    try:
+        return GeminiClient(Settings.from_env())
+    except ValueError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @app.get("/health")

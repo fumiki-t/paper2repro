@@ -90,6 +90,12 @@ def assess_claim_repository(
     mapping_validation = validate_repo_evidence(
         documents, assessment.mapping.evidence
     )
+    for validation in mapping_validation:
+        if not validation.is_valid:
+            warnings.append(
+                "Repository mapping evidence "
+                f"{validation.evidence_index} is invalid: {validation.reason}."
+            )
     has_valid_mapping_evidence = any(item.is_valid for item in mapping_validation)
     if assessment.mapping.status != "UNSUPPORTED" and not has_valid_mapping_evidence:
         warnings.append(
@@ -104,6 +110,12 @@ def assess_claim_repository(
     for item in assessment.audit:
         validations = validate_repo_evidence(documents, item.evidence)
         audit_validation[item.check] = validations
+        for validation in validations:
+            if not validation.is_valid:
+                warnings.append(
+                    f"Audit item {item.check} evidence "
+                    f"{validation.evidence_index} is invalid: {validation.reason}."
+                )
         has_valid_evidence = any(validation.is_valid for validation in validations)
         if item.status == "PRESENT" and not has_valid_evidence:
             replacement = "AMBIGUOUS" if item.evidence else "NOT_FOUND"

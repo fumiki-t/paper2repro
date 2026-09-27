@@ -48,3 +48,19 @@ def test_analysis_endpoint_runs_pipeline_without_real_gemini(tmp_path: Path) -> 
     assert response.json()["report"]["claims"] == []
     assert (output_dir / "report.json").is_file()
     assert (output_dir / "report.md").is_file()
+
+
+def test_analysis_endpoint_explains_missing_api_key(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("PAPER2REPRO_API_KEY", raising=False)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"not read because dependency fails first")
+
+    response = TestClient(app).post(
+        "/analysis",
+        json={"paper_path": str(pdf_path), "repository": str(tmp_path)},
+    )
+
+    assert response.status_code == 503
+    assert "PAPER2REPRO_API_KEY" in response.json()["detail"]

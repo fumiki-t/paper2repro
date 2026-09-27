@@ -97,7 +97,7 @@ def test_assessor_downgrades_unanchored_mapping_and_present_audit() -> None:
     )
     assert checkpoint.status == "AMBIGUOUS"
     assert not grounded.mapping_validation[0].is_valid
-    assert grounded.warnings
+    assert any("path_not_retrieved" in warning for warning in grounded.warnings)
 
 
 def test_assessor_skips_llm_when_retrieval_is_empty() -> None:

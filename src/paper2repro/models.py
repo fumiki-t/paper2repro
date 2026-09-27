@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 @dataclass
@@ -103,7 +103,7 @@ class ClaimAnalysis(BaseModel):
     mapping_evidence_validation: list[RepoEvidenceCheck]
     audit: list[AuditItem]
     audit_evidence_validation: list[AuditEvidenceChecks]
-    warnings: list[str] = []
+    warnings: list[str] = Field(default_factory=list)
 
 
 class AnalysisReport(BaseModel):
