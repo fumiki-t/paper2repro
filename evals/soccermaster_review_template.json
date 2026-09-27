@@ -1,0 +1,15 @@
+{
+  "paper": "SoccerMaster",
+  "repository": "https://github.com/haolinyang-hlyang/SoccerMaster",
+  "annotation_status": "human_review_required",
+  "reviewer": null,
+  "reviewed_at": null,
+  "claim_annotations": [],
+  "retrieval_annotations": [],
+  "audit_annotations": [],
+  "notes": [
+    "Add only claims and labels verified by a human reviewer.",
+    "Do not copy model output into gold fields without checking the paper and repository.",
+    "Record the expected PDF page and repository paths for traceability."
+  ]
+}

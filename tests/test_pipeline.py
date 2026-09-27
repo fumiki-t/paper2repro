@@ -57,6 +57,23 @@ class PipelineLLMClient:
         raise AssertionError(f"Unexpected response model: {response_model}")
 
 
+class InvalidPaperEvidenceClient(PipelineLLMClient):
+    def generate_structured(self, prompt, response_model):
+        if response_model is ClaimExtractionResult:
+            return ClaimExtractionResult(
+                claims=[
+                    ExperimentalClaim(
+                        statement="The method reaches 99.9 mAP on SoccerNet.",
+                        evidence=[PaperEvidence(page=1, excerpt="99.9 mAP")],
+                        dataset="SoccerNet",
+                        metric="mAP",
+                        reported_value="99.9",
+                    )
+                ]
+            )
+        return super().generate_structured(prompt, response_model)
+
+
 def test_pipeline_runs_end_to_end_with_grounded_report(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -97,3 +114,24 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     markdown = markdown_path.read_text(encoding="utf-8")
     assert "**VALID**" in markdown
     assert "**evaluation_protocol_metric: PRESENT**" in markdown
+
+
+def test_report_keeps_invalid_paper_evidence_visible(
+    tmp_path: Path, monkeypatch
+) -> None:
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"mocked by parse_pdf")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "README.md").write_text("SoccerNet mAP 99.9", encoding="utf-8")
+    monkeypatch.setattr(
+        "paper2repro.pipeline.parse_pdf",
+        lambda path: [PaperChunk(page=1, text="The measured score was 72.4 mAP.")],
+    )
+
+    report = analyze(paper_path, repository, InvalidPaperEvidenceClient())
+    _, markdown_path = write_analysis_report(report, tmp_path / "output")
+
+    assert not report.claims[0].paper_evidence_validation[0].is_valid
+    assert "could not be anchored" in report.warnings[0]
+    assert "**INVALID**" in markdown_path.read_text(encoding="utf-8")

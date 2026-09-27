@@ -42,9 +42,9 @@ def test_evidence_allows_whitespace_differences() -> None:
 
 
 def test_evidence_restores_line_break_hyphenation() -> None:
-    chunks = [PaperChunk(text="The SoccerMas-\nter model wins.", page=3)]
+    chunks = [PaperChunk(text="The paper is of-\nfering a baseline.", page=3)]
 
-    [validation] = validate_evidence(chunks, _result(3, "SoccerMaster model"))
+    [validation] = validate_evidence(chunks, _result(3, "offering a baseline"))
 
     assert validation.is_valid
 

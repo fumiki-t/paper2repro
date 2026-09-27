@@ -54,9 +54,11 @@ def test_loader_skips_binary_excluded_and_large_files(tmp_path: Path) -> None:
 
 def test_loader_skips_invalid_utf8_without_stopping(tmp_path: Path) -> None:
     (tmp_path / "bad.txt").write_bytes(b"\xff\xfe")
+    (tmp_path / "binary.txt").write_bytes(b"text\x00binary")
     (tmp_path / "good.toml").write_text("seed = 7", encoding="utf-8")
     artifacts = [
         RepoArtifact(path="bad.txt", artifact_type="other"),
+        RepoArtifact(path="binary.txt", artifact_type="other"),
         RepoArtifact(path="good.toml", artifact_type="config"),
     ]
 
