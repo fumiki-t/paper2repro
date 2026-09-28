@@ -106,12 +106,27 @@ class ClaimAnalysis(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class LLMTokenUsage(BaseModel):
+    """Provider-reported token counts for one structured LLM request."""
+
+    total_input_tokens: int | None = None
+    total_output_tokens: int | None = None
+    total_thought_tokens: int | None = None
+    total_cached_tokens: int | None = None
+    total_tokens: int | None = None
+
+
 class LLMRequestMetric(BaseModel):
     model: str
     response_model: str
     prompt_characters: int
     response_characters: int
     elapsed_seconds: float
+    total_input_tokens: int | None = None
+    total_output_tokens: int | None = None
+    total_thought_tokens: int | None = None
+    total_cached_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class ClaimRuntimeMetric(BaseModel):
@@ -133,6 +148,11 @@ class PerformanceMetrics(BaseModel):
     llm_request_count: int | None = None
     prompt_characters_total: int | None = None
     response_characters_total: int | None = None
+    total_input_tokens: int | None = None
+    total_output_tokens: int | None = None
+    total_thought_tokens: int | None = None
+    total_cached_tokens: int | None = None
+    total_tokens: int | None = None
     cache_hits: int | None = None
     cache_misses: int | None = None
     llm_requests: list[LLMRequestMetric] = Field(default_factory=list)

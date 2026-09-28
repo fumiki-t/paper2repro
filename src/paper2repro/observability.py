@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from paper2repro.cache import AnalysisCache
 from paper2repro.llm import LLMClient
-from paper2repro.models import LLMRequestMetric
+from paper2repro.models import LLMRequestMetric, LLMTokenUsage
 
 
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
@@ -20,7 +20,7 @@ class LLMCallBudgetExceeded(RuntimeError):
 
 
 class InstrumentedLLMClient:
-    """Count actual requests and capture character counts and wall time."""
+    """Count requests and capture text lengths, optional token usage, and time."""
 
     def __init__(
         self,
@@ -54,6 +54,12 @@ class InstrumentedLLMClient:
             response_characters = len(result.model_dump_json())
             return result
         finally:
+            token_usage = getattr(self.client, "last_token_usage", None)
+            token_fields = (
+                token_usage.model_dump()
+                if isinstance(token_usage, LLMTokenUsage)
+                else {}
+            )
             self.requests.append(
                 LLMRequestMetric(
                     model=self.model_name,
@@ -61,6 +67,7 @@ class InstrumentedLLMClient:
                     prompt_characters=len(prompt),
                     response_characters=response_characters,
                     elapsed_seconds=perf_counter() - started,
+                    **token_fields,
                 )
             )
 

@@ -18,6 +18,7 @@ from paper2repro.models import (
     ClaimExtractionResult,
     ClaimRepositoryAssessment,
     ClaimRuntimeMetric,
+    LLMRequestMetric,
     PaperEvidenceCheck,
     PerformanceMetrics,
     RepoEvidenceCheck,
@@ -44,6 +45,18 @@ RETRIEVAL_VERSION = "keyword-dataset-metric-value-v1"
 
 def _schema_hash(response_model: type) -> str:
     return stable_hash(response_model.model_json_schema())
+
+
+def _sum_complete_token_usage(
+    requests: list[LLMRequestMetric], field: str
+) -> int | None:
+    """Return a total only when every recorded request has that usage value."""
+    if not requests:
+        return None
+    values = [getattr(request, field) for request in requests]
+    if any(value is None for value in values):
+        return None
+    return sum(values)
 
 
 def analyze(
@@ -215,6 +228,19 @@ def analyze(
         response_characters_total=sum(
             request.response_characters for request in llm_requests
         ),
+        total_input_tokens=_sum_complete_token_usage(
+            llm_requests, "total_input_tokens"
+        ),
+        total_output_tokens=_sum_complete_token_usage(
+            llm_requests, "total_output_tokens"
+        ),
+        total_thought_tokens=_sum_complete_token_usage(
+            llm_requests, "total_thought_tokens"
+        ),
+        total_cached_tokens=_sum_complete_token_usage(
+            llm_requests, "total_cached_tokens"
+        ),
+        total_tokens=_sum_complete_token_usage(llm_requests, "total_tokens"),
         cache_hits=cached_client.cache_hits,
         cache_misses=cached_client.cache_misses,
         llm_requests=llm_requests,

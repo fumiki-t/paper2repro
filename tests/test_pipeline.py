@@ -6,6 +6,7 @@ from paper2repro.models import (
     ClaimRepositoryAssessment,
     ClaimRepositoryMapping,
     ExperimentalClaim,
+    LLMTokenUsage,
     PaperChunk,
     PaperEvidence,
     RepoEvidence,
@@ -103,6 +104,17 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     assert report.claims[0].retrieved_documents == ["README.md"]
     assert report.claims[0].mapping.status == "SUPPORTED"
     assert report.claims[0].mapping_evidence_validation[0].is_valid
+    assert report.performance.prompt_characters_total == sum(
+        request.prompt_characters for request in report.performance.llm_requests
+    )
+    assert report.performance.response_characters_total == sum(
+        request.response_characters for request in report.performance.llm_requests
+    )
+    assert report.performance.total_input_tokens is None
+    assert report.performance.total_output_tokens is None
+    assert report.performance.total_thought_tokens is None
+    assert report.performance.total_cached_tokens is None
+    assert report.performance.total_tokens is None
     metric_item = next(
         item
         for item in report.claims[0].audit
@@ -119,6 +131,75 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     assert "| # | Claim | Dataset | Metric / value | Paper evidence | Mapping |" in markdown
     assert "LLM requests: 2" in markdown
     assert "not token counts" in markdown
+
+
+def test_pipeline_saves_provider_token_usage_totals(
+    tmp_path: Path, monkeypatch
+) -> None:
+    class TokenUsageClient(PipelineLLMClient):
+        def __init__(self):
+            self.request_index = 0
+            self.last_token_usage = None
+            self.usages = [
+                LLMTokenUsage(
+                    total_input_tokens=100,
+                    total_output_tokens=30,
+                    total_thought_tokens=4,
+                    total_cached_tokens=10,
+                    total_tokens=134,
+                ),
+                LLMTokenUsage(
+                    total_input_tokens=50,
+                    total_output_tokens=20,
+                    total_thought_tokens=0,
+                    total_cached_tokens=0,
+                    total_tokens=70,
+                ),
+            ]
+
+        def generate_structured(self, prompt, response_model):
+            result = super().generate_structured(prompt, response_model)
+            self.last_token_usage = self.usages[self.request_index]
+            self.request_index += 1
+            return result
+
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"mocked by parse_pdf")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "README.md").write_text(
+        "Evaluate SoccerNet mAP 72.4 with python evaluate.py", encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "paper2repro.pipeline.parse_pdf",
+        lambda path: [
+            PaperChunk(page=1, text="The method reaches 72.4 mAP on SoccerNet.")
+        ],
+    )
+
+    report = analyze(paper_path, repository, TokenUsageClient())
+    serialized_performance = report.model_dump(mode="json")["performance"]
+
+    assert serialized_performance["total_input_tokens"] == 150
+    assert serialized_performance["total_output_tokens"] == 50
+    assert serialized_performance["total_thought_tokens"] == 4
+    assert serialized_performance["total_cached_tokens"] == 10
+    assert serialized_performance["total_tokens"] == 204
+    assert report.performance.prompt_characters_total == sum(
+        request.prompt_characters for request in report.performance.llm_requests
+    )
+    assert report.performance.response_characters_total == sum(
+        request.response_characters for request in report.performance.llm_requests
+    )
+    assert report.performance.llm_requests[0].total_input_tokens == 100
+
+    _, markdown_path = write_analysis_report(report, tmp_path / "output")
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert (
+        "Provider-reported tokens: input 150; output 50; thought 4; cached 10; "
+        "total 204"
+    ) in markdown
+    assert "recorded separately from character counts" in markdown
 
 
 def test_pipeline_cache_reuses_extraction_and_mapping_and_invalidates_changed_docs(
