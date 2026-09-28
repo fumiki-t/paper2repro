@@ -36,7 +36,7 @@ The LLM performs bounded extraction and semantic classification. Deterministic c
 3. Paper excerpts are anchored to the cited page using conservative normalization.
 4. A local repository is used directly, or a public GitHub repository is shallow-cloned into a temporary directory.
 5. The inventory is converted into bounded UTF-8 `RepoDocument` objects. Binary, generated, cached, and files larger than 256 KB are skipped to bound memory and prompt size.
-6. The lexical baseline scores `path + content` using the claim's dataset, metric, and reported value, drops zero-score documents, and returns the top `k`.
+6. The selected lexical retriever scores repository paths and contents and returns the top `k` candidates. The baseline uses dataset, metric, and reported value; the experimental weighted retriever also scores claim-statement terms.
 7. Gemini receives only those retrieved documents and returns a claim mapping plus a seven-item reproduction checklist.
 8. Every repository path and excerpt is validated against the retrieved documents. Unsupported positive statuses are downgraded.
 9. The pipeline writes the complete structured result to JSON and a review-oriented Markdown report.
@@ -65,7 +65,9 @@ Validation normalizes Unicode, removes invisible format characters, repairs line
 
 ## Why keyword retrieval first?
 
-The v0.1 retriever is an intentionally simple lexical baseline. It matches only the claim's dataset, metric, and reported value against each `path + content`; it does not use the claim statement. In one SoccerMaster development run, the tool extracted 9 claims, anchored 21/21 paper evidence excerpts to their cited page, mapped 4/9 claims to at least partial repository information, and inspected 740 artifacts / 621 text documents. These are outputs from one run, not accuracy or general quality scores. The baseline returned no documents for Claims 4 and 8 and repeated unrelated candidates for Claims 2 and 9. Therefore `NOT_FOUND` applies only to retrieved and inspected files, and does not mean repository-wide absence. See [retrieval analysis](docs/SOCCERMASTER_RETRIEVAL_ANALYSIS.md).
+The default `baseline` retriever is an intentionally simple lexical baseline. It matches only the claim's dataset, metric, and reported value against each `path + content`; it does not use the claim statement. The `weighted` retriever is an experimental alternative that adds statement terms and gives extra weight to dataset, metric, reported value, and path matches. It can be selected with `--retriever weighted`; the default remains `baseline`.
+
+The weighted version was added after the baseline returned no candidates for Claims 4 and 8 in one SoccerMaster development run. In an offline development comparison, Claim 4's weighted top result was `video_caption.py` (baseline returned zero documents), and Claim 8's weighted top result was `data/video_caption.py` (baseline returned zero documents). These are observations from one repository and run, not accuracy results or a formal evaluation. In that same run, the tool extracted 9 claims, anchored 21/21 paper evidence excerpts to their cited page, mapped 4/9 claims to at least partial repository information, and inspected 740 artifacts / 621 text documents. These are outputs from one run, not accuracy or general quality scores. The baseline also returned repeated unrelated candidates for Claims 2 and 9. Therefore `NOT_FOUND` applies only to retrieved and inspected files, and does not mean repository-wide absence. See [retrieval analysis](docs/SOCCERMASTER_RETRIEVAL_ANALYSIS.md).
 
 ## Setup
 
@@ -91,6 +93,10 @@ uv run python scripts/analyze.py \
   --output outputs/soccermaster
 ```
 
+This uses the `baseline` retriever by default. To try the experimental weighted
+retriever, add `--retriever weighted`; the selected retriever is recorded in
+`report.json` and `report.md`.
+
 The CLI prints claim, evidence, mapping, and checklist counts and writes:
 
 - `outputs/soccermaster/report.json`
@@ -106,6 +112,23 @@ uv run python scripts/debug_retrieval.py \
   --repo /path/to/SoccerMaster \
   --top-k 5
 ```
+
+The debug CLI uses the baseline by default. To compare both rankings for the
+claims that need closer review, use:
+
+```bash
+uv run python scripts/debug_retrieval.py \
+  --report outputs/soccermaster/report.json \
+  --repo /path/to/SoccerMaster \
+  --compare \
+  --claims 2,4,8,9 \
+  --top-k 5
+```
+
+Use `--retriever baseline` or `--retriever weighted` to inspect one ranking.
+The weighted output includes matched terms and their score contributions.
+This is a local lexical comparison; it does not change the pipeline's default
+retriever or call an LLM.
 
 New Markdown reports start with a claim summary table and include counts for paper evidence, mapping statuses, and the seven-item audit. For a claim with no retrieved documents, its `NOT_FOUND` items explicitly refer to an empty inspected set.
 

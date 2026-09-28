@@ -22,6 +22,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("outputs/latest"))
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument(
+        "--retriever",
+        choices=("baseline", "weighted"),
+        default="baseline",
+        help="lexical repository retriever (default: baseline)",
+    )
+    parser.add_argument(
         "--max-llm-calls",
         type=int,
         help="Optional maximum number of provider requests; the default is unlimited.",
@@ -52,6 +58,7 @@ def main() -> int:
             args.repo,
             GeminiClient(settings),
             top_k=args.top_k,
+            retriever=args.retriever,
             model_name=settings.model,
             cache_dir=None if args.no_cache else args.cache_dir,
             max_llm_calls=args.max_llm_calls,

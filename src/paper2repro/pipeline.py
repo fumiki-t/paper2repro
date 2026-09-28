@@ -4,7 +4,7 @@ from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
 from time import perf_counter
-from typing import Callable
+from typing import Callable, Literal
 
 from paper2repro.cache import AnalysisCache, stable_hash
 from paper2repro.claims.evidence import validate_evidence
@@ -28,19 +28,23 @@ from paper2repro.pdf import parse_pdf
 from paper2repro.repo.inventory import inventory_repository
 from paper2repro.repo.loader import load_repository_documents
 from paper2repro.repo.source import repository_source
-from paper2repro.retrieval.keyword import retrieve_documents
+from paper2repro.retrieval.keyword import (
+    retrieve_documents,
+    retrieve_documents_weighted,
+)
 
 
 DEFAULT_LIMITATIONS = [
     "Evidence validation checks textual anchoring, not semantic entailment.",
-    "Keyword retrieval is a simple lexical baseline over dataset, metric, and value.",
+    "Repository retrieval is lexical and may miss relevant files.",
     "NOT_FOUND means not found in the inspected retrieved artifacts, not proven absent.",
     "Paper2Repro does not execute training, inference, or evaluation commands.",
 ]
 
 CLAIM_PROMPT_VERSION = "claim-extraction-v1"
 MAPPING_PROMPT_VERSION = "repository-assessment-v1"
-RETRIEVAL_VERSION = "keyword-dataset-metric-value-v1"
+BASELINE_RETRIEVAL_VERSION = "keyword-dataset-metric-value-v1"
+WEIGHTED_RETRIEVAL_VERSION = "weighted-lexical-v1"
 
 
 def _schema_hash(response_model: type) -> str:
@@ -65,12 +69,20 @@ def analyze(
     llm_client: LLMClient,
     *,
     top_k: int = 5,
+    retriever: Literal["baseline", "weighted"] = "baseline",
     model_name: str | None = None,
     cache_dir: Path | None = None,
     max_llm_calls: int | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> AnalysisReport:
     """Run claim extraction, repository mapping, and audit for one paper/repo pair."""
+    if retriever == "baseline":
+        retrieval_version = BASELINE_RETRIEVAL_VERSION
+    elif retriever == "weighted":
+        retrieval_version = WEIGHTED_RETRIEVAL_VERSION
+    else:
+        raise ValueError("retriever must be 'baseline' or 'weighted'")
+
     run_started = perf_counter()
     model_name = model_name or getattr(llm_client, "model", "unknown")
     observed_client = InstrumentedLLMClient(
@@ -131,7 +143,10 @@ def analyze(
                 f"[5/6] Assessing claim {claim_index}/{len(extracted.claims)}..."
             )
             retrieval_started = perf_counter()
-            retrieved = retrieve_documents(claim, documents, top_k=top_k)
+            if retriever == "baseline":
+                retrieved = retrieve_documents(claim, documents, top_k=top_k)
+            else:
+                retrieved = retrieve_documents_weighted(claim, documents, top_k=top_k)
             retrieval_seconds = perf_counter() - retrieval_started
             retrieval_seconds_total += retrieval_seconds
 
@@ -152,7 +167,7 @@ def analyze(
                     "model": model_name,
                     "prompt_version": MAPPING_PROMPT_VERSION,
                     "schema_version": _schema_hash(ClaimRepositoryAssessment),
-                    "retrieval_version": RETRIEVAL_VERSION,
+                    "retrieval_version": retrieval_version,
                     "top_k": top_k,
                     "retrieved_documents": document_fingerprints,
                 }
@@ -249,6 +264,7 @@ def analyze(
     return AnalysisReport(
         paper=str(paper_path),
         repository=str(repository),
+        retriever=retriever,
         repository_artifact_count=len(artifacts),
         repository_document_count=len(documents),
         claims=claim_analyses,

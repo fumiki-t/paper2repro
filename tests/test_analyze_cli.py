@@ -28,6 +28,8 @@ def test_end_to_end_cli_reports_missing_api_key(tmp_path: Path) -> None:
             str(pdf_path),
             "--repo",
             str(repository),
+            "--retriever",
+            "weighted",
         ],
         capture_output=True,
         text=True,

@@ -162,6 +162,7 @@ class PerformanceMetrics(BaseModel):
 class AnalysisReport(BaseModel):
     paper: str
     repository: str
+    retriever: Literal["baseline", "weighted"] = "baseline"
     repository_artifact_count: int
     repository_document_count: int
     claims: list[ClaimAnalysis]

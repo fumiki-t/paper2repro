@@ -99,6 +99,7 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
 
     report = analyze(paper_path, repository, PipelineLLMClient())
 
+    assert report.retriever == "baseline"
     assert len(report.claims) == 1
     assert report.claims[0].paper_evidence_validation[0].is_valid
     assert report.claims[0].retrieved_documents == ["README.md"]
@@ -115,6 +116,16 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     assert report.performance.total_thought_tokens is None
     assert report.performance.total_cached_tokens is None
     assert report.performance.total_tokens is None
+
+    explicit_baseline = analyze(
+        paper_path,
+        repository,
+        PipelineLLMClient(),
+        retriever="baseline",
+    )
+    assert explicit_baseline.retriever == "baseline"
+    assert explicit_baseline.claims[0].retrieved_documents == ["README.md"]
+
     metric_item = next(
         item
         for item in report.claims[0].audit
@@ -125,12 +136,49 @@ def test_pipeline_runs_end_to_end_with_grounded_report(
     json_path, markdown_path = write_analysis_report(report, tmp_path / "output")
     assert '"is_valid": true' in json_path.read_text(encoding="utf-8")
     markdown = markdown_path.read_text(encoding="utf-8")
+    assert '"retriever": "baseline"' in json_path.read_text(encoding="utf-8")
+    assert "- Retriever: `baseline`" in markdown
     assert "**VALID**" in markdown
     assert "**evaluation_protocol_metric: PRESENT**" in markdown
     assert "## Summary" in markdown
     assert "| # | Claim | Dataset | Metric / value | Paper evidence | Mapping |" in markdown
     assert "LLM requests: 2" in markdown
     assert "not token counts" in markdown
+
+
+def test_pipeline_selects_weighted_retriever_and_records_it(
+    tmp_path: Path, monkeypatch
+) -> None:
+    paper_path = tmp_path / "paper.pdf"
+    paper_path.write_bytes(b"mocked by parse_pdf")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "README.md").write_text(
+        "Evaluate SoccerNet mAP 72.4 with python evaluate.py", encoding="utf-8"
+    )
+    (repository / "train.py").write_text(
+        "SoccerNet mAP 72.4 method reaches", encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "paper2repro.pipeline.parse_pdf",
+        lambda path: [
+            PaperChunk(page=1, text="The method reaches 72.4 mAP on SoccerNet.")
+        ],
+    )
+
+    report = analyze(
+        paper_path,
+        repository,
+        PipelineLLMClient(),
+        retriever="weighted",
+        top_k=1,
+    )
+
+    assert report.retriever == "weighted"
+    assert report.claims[0].retrieved_documents == ["train.py"]
+    json_path, markdown_path = write_analysis_report(report, tmp_path / "output")
+    assert '"retriever": "weighted"' in json_path.read_text(encoding="utf-8")
+    assert "- Retriever: `weighted`" in markdown_path.read_text(encoding="utf-8")
 
 
 def test_pipeline_saves_provider_token_usage_totals(
@@ -257,6 +305,20 @@ def test_pipeline_cache_reuses_extraction_and_mapping_and_invalidates_changed_do
     assert client.calls == 3
     assert third.performance.cache_hits == 1
     assert third.performance.llm_request_count == 1
+
+    weighted = analyze(
+        paper_path,
+        repository,
+        client,
+        model_name="fake-v1",
+        cache_dir=cache_dir,
+        retriever="weighted",
+    )
+    assert weighted.retriever == "weighted"
+    assert client.calls == 4
+    assert weighted.performance.cache_hits == 1
+    assert weighted.performance.cache_misses == 1
+    assert weighted.performance.llm_request_count == 1
 
 
 def test_pipeline_call_budget_blocks_mapping_and_reuses_completed_extraction(
