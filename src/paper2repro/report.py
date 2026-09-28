@@ -200,7 +200,14 @@ def render_analysis_report(report: AnalysisReport) -> str:
             f"cache hits: {_count(performance.cache_hits)}",
             f"- Prompt characters: {_count(performance.prompt_characters_total)}; "
             f"response characters: {_count(performance.response_characters_total)}",
+            "- Provider-reported tokens: "
+            f"input {_count(performance.total_input_tokens)}; "
+            f"output {_count(performance.total_output_tokens)}; "
+            f"thought {_count(performance.total_thought_tokens)}; "
+            f"cached {_count(performance.total_cached_tokens)}; "
+            f"total {_count(performance.total_tokens)}",
             "- Character counts are text lengths, not token counts or billing measurements.",
+            "- Provider-reported token counts are recorded separately from character counts.",
         ]
     )
     if performance.claims:
