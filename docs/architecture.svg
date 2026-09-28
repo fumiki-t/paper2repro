@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1040" role="img" aria-labelledby="title description">
+  <title id="title">Paper2Repro analysis flow</title>
+  <desc id="description">Paper text and repository documents flow through claim extraction, lexical retrieval, mapping, deterministic evidence checks, and JSON or Markdown reports.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 z" fill="#425466"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17212b; }
+      .title { font-size: 32px; font-weight: 700; }
+      .subtitle { font-size: 17px; fill: #526171; }
+      .lane { font-size: 14px; font-weight: 700; letter-spacing: 1.5px; fill: #526171; }
+      .box-title { font-size: 20px; font-weight: 650; text-anchor: middle; }
+      .box-subtitle { font-size: 15px; text-anchor: middle; fill: #526171; }
+      .note { font-size: 15px; fill: #526171; }
+      .arrow { fill: none; stroke: #425466; stroke-width: 2.4; marker-end: url(#arrow); }
+      .connector { fill: none; stroke: #718096; stroke-width: 2.2; marker-end: url(#arrow); }
+      .paper { fill: #eef5fc; stroke: #6388ad; }
+      .repo { fill: #f0f5eb; stroke: #718e5e; }
+      .llm { fill: #f4effb; stroke: #8870ad; }
+      .check { fill: #edf6f3; stroke: #5a9382; }
+      .report { fill: #f3f5f7; stroke: #647382; }
+      .node { stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+
+  <rect width="1900" height="1040" fill="#ffffff"/>
+  <text class="title" x="60" y="58">Paper2Repro analysis flow</text>
+  <text class="subtitle" x="60" y="90">Claim-level inspection of a paper and its repository, with deterministic evidence anchoring.</text>
+
+  <text class="lane" x="60" y="137">PAPER</text>
+  <rect class="node paper" x="60" y="158" width="220" height="108"/>
+  <text class="box-title" x="170" y="204">Paper PDF</text>
+  <text class="box-subtitle" x="170" y="232">local file</text>
+
+  <path class="arrow" d="M280 212 H350"/>
+  <rect class="node paper" x="350" y="158" width="210" height="108"/>
+  <text class="box-title" x="455" y="204">Page text</text>
+  <text class="box-subtitle" x="455" y="232">pypdf extraction</text>
+
+  <path class="arrow" d="M560 212 H630"/>
+  <rect class="node llm" x="630" y="158" width="250" height="108"/>
+  <text class="box-title" x="755" y="204">Claim extraction</text>
+  <text class="box-subtitle" x="755" y="232">Gemini structured output</text>
+
+  <path class="arrow" d="M880 212 H1010"/>
+  <rect class="node check" x="1010" y="158" width="330" height="108"/>
+  <text class="box-title" x="1175" y="204">Paper evidence validation</text>
+  <text class="box-subtitle" x="1175" y="232">excerpt anchored to cited page</text>
+
+  <text class="lane" x="60" y="476">REPOSITORY</text>
+  <rect class="node repo" x="60" y="498" width="220" height="118"/>
+  <text class="box-title" x="170" y="544">Repo URL /</text>
+  <text class="box-title" x="170" y="570">local repo</text>
+
+  <path class="arrow" d="M280 557 H350"/>
+  <rect class="node repo" x="350" y="498" width="210" height="118"/>
+  <text class="box-title" x="455" y="554">Inventory</text>
+  <text class="box-subtitle" x="455" y="582">artifact classification</text>
+
+  <path class="arrow" d="M560 557 H630"/>
+  <rect class="node repo" x="630" y="498" width="250" height="118"/>
+  <text class="box-title" x="755" y="554">Text document</text>
+  <text class="box-title" x="755" y="580">loader</text>
+  <text class="box-subtitle" x="755" y="602">bounded UTF-8 files</text>
+
+  <path class="arrow" d="M880 557 H950"/>
+  <rect class="node repo" x="950" y="498" width="250" height="118"/>
+  <text class="box-title" x="1075" y="554">Lexical retrieval</text>
+  <text class="box-subtitle" x="1075" y="582">baseline default</text>
+  <text class="box-subtitle" x="1075" y="602">weighted experimental</text>
+
+  <path class="arrow" d="M1200 557 H1280"/>
+  <rect class="node llm" x="1280" y="498" width="270" height="118"/>
+  <text class="box-title" x="1415" y="554">Mapping / audit</text>
+  <text class="box-subtitle" x="1415" y="582">claim + retrieved documents</text>
+  <text class="box-subtitle" x="1415" y="603">Gemini</text>
+
+  <path class="arrow" d="M1550 557 H1620"/>
+  <rect class="node check" x="1620" y="498" width="230" height="118"/>
+  <text class="box-title" x="1735" y="554">Repository evidence</text>
+  <text class="box-title" x="1735" y="580">validation</text>
+  <text class="box-subtitle" x="1735" y="602">path + excerpt anchoring</text>
+
+  <path class="connector" d="M755 266 V410 H1415 V498"/>
+  <text class="note" x="1010" y="402">experimental claims</text>
+
+  <path class="arrow" d="M1735 616 V770 H1640 V820"/>
+  <rect class="node report" x="1460" y="820" width="360" height="112"/>
+  <text class="box-title" x="1640" y="868">Reviewable reports</text>
+  <text class="box-subtitle" x="1640" y="898">report.json + report.md</text>
+
+  <path class="connector" d="M1340 212 H1880 V876 H1820"/>
+  <text class="note" x="1450" y="198">paper checks</text>
+
+  <text class="note" x="60" y="1000">Evidence anchoring verifies location and excerpt text; it does not establish semantic support or reproduce results.</text>
+</svg>
