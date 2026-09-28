@@ -106,6 +106,27 @@ def test_gemini_client_disables_sdk_retries_by_default(monkeypatch) -> None:
 def test_gemini_client_wraps_provider_error_and_preserves_cause() -> None:
     class RateLimitError(Exception):
         status_code = 429
+        code = 429
+        message = (
+            "Quota exceeded for Requests per minute; "
+            "api_key: test-secret-value"
+        )
+        details = {
+            "error": {
+                "details": [
+                    {
+                        "violations": [
+                            {
+                                "quotaMetric": (
+                                    "generativelanguage.googleapis.com/requests_per_minute"
+                                ),
+                                "quotaId": "RequestsPerMinutePerProjectPerModel",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
 
     class FailingInteractions:
         def create(self, **kwargs):
@@ -120,6 +141,12 @@ def test_gemini_client_wraps_provider_error_and_preserves_cause() -> None:
     except GeminiProviderError as error:
         assert error.provider == "Gemini"
         assert error.category == "rate_limit"
+        assert error.provider_code == 429
+        assert error.provider_message is not None
+        assert "Requests per minute" in error.provider_message
+        assert "requests_per_minute" in error.provider_message
+        assert "test-secret-value" not in error.provider_message
+        assert "[REDACTED]" in error.provider_message
         assert isinstance(error.__cause__, RateLimitError)
     else:
         raise AssertionError("Gemini provider error should have been wrapped")

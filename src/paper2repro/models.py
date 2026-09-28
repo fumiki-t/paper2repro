@@ -163,6 +163,8 @@ class AnalysisReport(BaseModel):
     paper: str
     repository: str
     retriever: Literal["baseline", "weighted"] = "baseline"
+    claim_source: Literal["llm", "reused_report"] = "llm"
+    claim_source_path: str | None = None
     repository_artifact_count: int
     repository_document_count: int
     claims: list[ClaimAnalysis]

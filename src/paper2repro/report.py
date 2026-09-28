@@ -63,6 +63,12 @@ def render_analysis_report(report: AnalysisReport) -> str:
         f"- Paper: `{report.paper}`",
         f"- Repository: `{report.repository}`",
         f"- Retriever: `{report.retriever}`",
+        f"- Claim source: `{report.claim_source}`",
+        *(
+            [f"- Claim source report: `{report.claim_source_path}`"]
+            if report.claim_source_path
+            else []
+        ),
         f"- Repository artifacts inventoried: {report.repository_artifact_count}",
         f"- Text documents loaded: {report.repository_document_count}",
         "",

@@ -6,6 +6,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Callable, Literal
 
+from pydantic import ValidationError
+
 from paper2repro.cache import AnalysisCache, stable_hash
 from paper2repro.claims.evidence import validate_evidence
 from paper2repro.claims.extractor import extract_claims
@@ -47,6 +49,37 @@ BASELINE_RETRIEVAL_VERSION = "keyword-dataset-metric-value-v1"
 WEIGHTED_RETRIEVAL_VERSION = "weighted-lexical-v1"
 
 
+class ClaimSourceError(ValueError):
+    """Raised when a saved analysis report cannot supply reusable claims."""
+
+
+def _load_claims_from_report(path: Path) -> ClaimExtractionResult:
+    if not path.is_file():
+        raise ClaimSourceError(
+            f"Claim source report does not exist or is not a file: {path}"
+        )
+    try:
+        report_text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        detail = error.strerror or "file could not be read"
+        raise ClaimSourceError(
+            f"Could not read claim source report {path}: {detail}"
+        ) from error
+    except UnicodeError as error:
+        raise ClaimSourceError(
+            f"Claim source report is not valid UTF-8 text: {path}"
+        ) from error
+    try:
+        report = AnalysisReport.model_validate_json(report_text)
+    except (ValidationError, ValueError) as error:
+        raise ClaimSourceError(
+            f"Claim source report is not valid Paper2Repro report JSON: {path}"
+        ) from error
+    return ClaimExtractionResult(
+        claims=[claim_analysis.claim for claim_analysis in report.claims]
+    )
+
+
 def _schema_hash(response_model: type) -> str:
     return stable_hash(response_model.model_json_schema())
 
@@ -70,6 +103,7 @@ def analyze(
     *,
     top_k: int = 5,
     retriever: Literal["baseline", "weighted"] = "baseline",
+    reuse_claims_from: Path | None = None,
     model_name: str | None = None,
     cache_dir: Path | None = None,
     max_llm_calls: int | None = None,
@@ -82,6 +116,14 @@ def analyze(
         retrieval_version = WEIGHTED_RETRIEVAL_VERSION
     else:
         raise ValueError("retriever must be 'baseline' or 'weighted'")
+    claim_source: Literal["llm", "reused_report"] = "llm"
+    claim_source_path: str | None = None
+    reused_claims: ClaimExtractionResult | None = None
+    if reuse_claims_from is not None:
+        claim_source_file = Path(reuse_claims_from).expanduser()
+        reused_claims = _load_claims_from_report(claim_source_file)
+        claim_source = "reused_report"
+        claim_source_path = str(claim_source_file)
 
     run_started = perf_counter()
     model_name = model_name or getattr(llm_client, "model", "unknown")
@@ -100,22 +142,30 @@ def analyze(
     chunks = parse_pdf(paper_path)
     pdf_parsing_seconds = perf_counter() - started
 
-    paper_hash = stable_hash(
-        [{"page": chunk.page, "text": chunk.text} for chunk in chunks]
-    )
-    cached_client.prepare_cache_key(
-        {
-            "operation": "claim_extraction",
-            "paper_content_hash": paper_hash,
-            "model": model_name,
-            "prompt_version": CLAIM_PROMPT_VERSION,
-            "schema_version": _schema_hash(ClaimExtractionResult),
-        }
-    )
-    report_progress("[2/6] Extracting experimental claims...")
-    started = perf_counter()
-    extracted = extract_claims(chunks, cached_client)
-    claim_extraction_seconds = perf_counter() - started
+    if reused_claims is not None:
+        extracted = reused_claims
+        claim_extraction_seconds = 0.0
+        report_progress(
+            f"[2/6] Reusing {len(extracted.claims)} experimental claims from "
+            f"{claim_source_path}..."
+        )
+    else:
+        paper_hash = stable_hash(
+            [{"page": chunk.page, "text": chunk.text} for chunk in chunks]
+        )
+        cached_client.prepare_cache_key(
+            {
+                "operation": "claim_extraction",
+                "paper_content_hash": paper_hash,
+                "model": model_name,
+                "prompt_version": CLAIM_PROMPT_VERSION,
+                "schema_version": _schema_hash(ClaimExtractionResult),
+            }
+        )
+        report_progress("[2/6] Extracting experimental claims...")
+        started = perf_counter()
+        extracted = extract_claims(chunks, cached_client)
+        claim_extraction_seconds = perf_counter() - started
     paper_validations = validate_evidence(chunks, extracted)
     validations_by_claim: dict[int, list[PaperEvidenceCheck]] = {}
     for validation in paper_validations:
@@ -265,6 +315,8 @@ def analyze(
         paper=str(paper_path),
         repository=str(repository),
         retriever=retriever,
+        claim_source=claim_source,
+        claim_source_path=claim_source_path,
         repository_artifact_count=len(artifacts),
         repository_document_count=len(documents),
         claims=claim_analyses,

@@ -7,7 +7,7 @@ import sys
 
 from paper2repro.config import Settings
 from paper2repro.observability import LLMCallBudgetExceeded
-from paper2repro.pipeline import analyze
+from paper2repro.pipeline import ClaimSourceError, analyze
 from paper2repro.providers.gemini import GeminiClient, GeminiProviderError
 from paper2repro.report import write_analysis_report
 from paper2repro.repo.source import RepositorySourceError
@@ -26,6 +26,11 @@ def main() -> int:
         choices=("baseline", "weighted"),
         default="baseline",
         help="lexical repository retriever (default: baseline)",
+    )
+    parser.add_argument(
+        "--reuse-claims-from",
+        type=Path,
+        help="reuse claims from an existing report.json without claim extraction",
     )
     parser.add_argument(
         "--max-llm-calls",
@@ -47,6 +52,16 @@ def main() -> int:
         parser.error("--top-k must be at least 1")
     if args.max_llm_calls is not None and args.max_llm_calls < 1:
         parser.error("--max-llm-calls must be at least 1")
+    reuse_claims_from = (
+        args.reuse_claims_from.expanduser()
+        if args.reuse_claims_from is not None
+        else None
+    )
+    if reuse_claims_from is not None and not reuse_claims_from.is_file():
+        parser.error(
+            "Claim source report does not exist or is not a file: "
+            f"{reuse_claims_from}"
+        )
 
     settings = Settings.from_env()
     if not settings.api_key:
@@ -59,6 +74,7 @@ def main() -> int:
             GeminiClient(settings),
             top_k=args.top_k,
             retriever=args.retriever,
+            reuse_claims_from=reuse_claims_from,
             model_name=settings.model,
             cache_dir=None if args.no_cache else args.cache_dir,
             max_llm_calls=args.max_llm_calls,
@@ -72,8 +88,18 @@ def main() -> int:
             else "Rerun the command after the provider issue clears."
         )
         print(
-            f"{error.provider} error (category: {error.category}). "
-            f"No automatic retry was attempted. {cache_note}",
+            f"{error.provider} error (category: {error.category}):\n"
+            + (
+                f"code {error.provider_code}: "
+                if error.provider_code is not None
+                else ""
+            )
+            + (
+                error.provider_message
+                if error.provider_message
+                else "No safe provider message was available."
+            )
+            + f"\nNo automatic retry was attempted. {cache_note}",
             file=sys.stderr,
         )
         return 1
@@ -91,6 +117,8 @@ def main() -> int:
         )
         return 1
     except RepositorySourceError as error:
+        parser.error(str(error))
+    except ClaimSourceError as error:
         parser.error(str(error))
 
     print("[6/6] Writing reports...", flush=True)

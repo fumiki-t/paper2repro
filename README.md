@@ -97,6 +97,20 @@ This uses the `baseline` retriever by default. To try the experimental weighted
 retriever, add `--retriever weighted`; the selected retriever is recorded in
 `report.json` and `report.md`.
 
+To compare retrievers with a fixed claim set, reuse claims from an existing
+analysis report. Paper2Repro still parses the supplied PDF and revalidates every
+paper evidence excerpt against that PDF, while skipping claim extraction:
+
+```bash
+uv run python scripts/analyze.py \
+  --paper local_data/soccermaster.pdf \
+  --repo https://github.com/haolinyang-hlyang/SoccerMaster \
+  --retriever weighted \
+  --reuse-claims-from outputs/soccermaster/report.json
+```
+
+The output records `claim_source: reused_report` and the source report path.
+
 The CLI prints claim, evidence, mapping, and checklist counts and writes:
 
 - `outputs/soccermaster/report.json`

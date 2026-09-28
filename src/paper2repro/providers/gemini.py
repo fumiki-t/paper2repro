@@ -1,5 +1,6 @@
 """Google Gemini implementation of the structured LLM client interface."""
 
+import re
 from collections.abc import Mapping
 from typing import Any, TypeVar
 
@@ -30,10 +31,87 @@ def _read_field(value: Any, name: str) -> Any:
 class GeminiProviderError(RuntimeError):
     """Provider failure with a concise category; the SDK error remains ``__cause__``."""
 
-    def __init__(self, category: str) -> None:
+    def __init__(
+        self,
+        category: str,
+        *,
+        provider_code: int | str | None = None,
+        provider_message: str | None = None,
+    ) -> None:
         self.provider = "Gemini"
         self.category = category
+        self.provider_code = provider_code
+        self.provider_message = provider_message
         super().__init__(f"Gemini request failed ({category}).")
+
+
+def _redact_secrets(message: str) -> str:
+    safe_message = message
+    safe_message = re.sub(
+        (
+            r"(?i)\b(api[_ -]?key|access[_ -]?token|client[_ -]?secret|"
+            r"secret|password|token|authorization)\b"
+            r"[\"']?\s*[:=]\s*[\"']?[^\s,\"'}]+"
+        ),
+        r"\1=[REDACTED]",
+        safe_message,
+    )
+    safe_message = re.sub(
+        r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]+=*", "Bearer [REDACTED]", safe_message
+    )
+    safe_message = re.sub(r"AIza[0-9A-Za-z_-]{20,}", "[REDACTED]", safe_message)
+    safe_message = re.sub(
+        r"(?i)([?&](?:key|api_key|access_token)=)[^&#\s]+",
+        r"\1[REDACTED]",
+        safe_message,
+    )
+    return safe_message
+
+
+def _quota_identifiers(value: Any) -> list[str]:
+    found: list[str] = []
+
+    def visit(item: Any) -> None:
+        if isinstance(item, Mapping):
+            for key, child in item.items():
+                if key in {"quotaMetric", "quotaId"} and isinstance(child, str):
+                    identifier = _redact_secrets(child.strip())[:160]
+                    if identifier and identifier not in found:
+                        found.append(identifier)
+                elif isinstance(child, (Mapping, list, tuple)):
+                    visit(child)
+        elif isinstance(item, (list, tuple)):
+            for child in item:
+                visit(child)
+
+    visit(value)
+    return found[:6]
+
+
+def _safe_provider_message(error: Exception) -> str | None:
+    parts: list[str] = []
+    message = getattr(error, "message", None)
+    if isinstance(message, str) and message.strip():
+        parts.append(_redact_secrets(message.strip()))
+    for identifier in _quota_identifiers(getattr(error, "details", None)):
+        if not any(identifier in part for part in parts):
+            parts.append(f"quota identifier: {identifier}")
+    if not parts:
+        return None
+    return "; ".join(parts)[:1200]
+
+
+def _provider_code(error: Exception) -> int | str | None:
+    code = getattr(error, "code", None)
+    if isinstance(code, int) and not isinstance(code, bool):
+        return code
+    if isinstance(code, str):
+        if re.fullmatch(r"\d{1,5}|[A-Z][A-Z0-9_.-]{1,63}", code):
+            return code
+    status_code = getattr(error, "status_code", None)
+    if isinstance(status_code, int) and not isinstance(status_code, bool):
+        return status_code
+    return None
 
 
 def _error_category(error: Exception) -> str:
@@ -43,6 +121,7 @@ def _error_category(error: Exception) -> str:
     if (
         status == 429
         or "429" in status_text
+        or "resource_exhausted" in status_text
         or "resourceexhausted" in name
         or "ratelimit" in name
     ):
@@ -96,7 +175,11 @@ class GeminiClient:
                 ],
             )
         except Exception as error:
-            raise GeminiProviderError(_error_category(error)) from error
+            raise GeminiProviderError(
+                _error_category(error),
+                provider_code=_provider_code(error),
+                provider_message=_safe_provider_message(error),
+            ) from error
         usage = _read_field(interaction, "usage")
         if usage is not None:
             self.last_token_usage = LLMTokenUsage(
