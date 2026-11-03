@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "label_type": "synthetic",
+  "description": "Fictional CometSet repository and hand-checkable labels for testing the evaluator, not research results.",
+  "queries": [
+    {
+      "query_id": "decoder-config",
+      "repository": "repository",
+      "claim": {
+        "statement": "The decoder configuration uses training inputs for CometSet.",
+        "dataset": "CometSet",
+        "metric": "score",
+        "reported_value": "12.0"
+      },
+      "relevant_paths": ["configs/decoder.yaml", "data/decoder.txt"]
+    },
+    {
+      "query_id": "decoder-inputs",
+      "repository": "./repository",
+      "claim": {
+        "statement": "The decoder prepares inputs.",
+        "dataset": null,
+        "metric": null,
+        "reported_value": null
+      },
+      "relevant_paths": ["data/decoder.txt"]
+    },
+    {
+      "query_id": "zero-hit",
+      "repository": "repository",
+      "claim": {
+        "statement": "An absent lunar benchmark.",
+        "dataset": "LunarSet"
+      },
+      "relevant_paths": ["docs/other.txt"]
+    }
+  ]
+}
