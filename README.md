@@ -96,6 +96,12 @@ uv run python scripts/debug_retrieval.py \
 
 Use `--retriever baseline` or `--retriever weighted` to inspect one ranking. Weighted results show matched terms and score contributions.
 
+For quantitative comparison against fixed file-level labels, use the offline
+[retrieval evaluator](docs/RETRIEVAL_EVALUATION_JA.md). It reports Recall@k,
+Precision@k, MRR@k, label coverage, and separate loading / retrieval timings for
+both methods. The bundled synthetic fixture checks evaluator behavior and is
+not a research benchmark.
+
 ## Example report layout
 
 The following is a **schematic** excerpt; bracketed values are placeholders, not measured results.
